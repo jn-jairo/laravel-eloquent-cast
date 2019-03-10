@@ -2,8 +2,10 @@
 
 namespace JnJairo\Laravel\EloquentCast;
 
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Concerns\HasAttributes;
 use Illuminate\Support\Str;
+use JnJairo\Laravel\EloquentCast\Builder;
 
 trait HasAttributesCast
 {
@@ -101,7 +103,7 @@ trait HasAttributesCast
             list($type, $format) = explode(':', $type, 2);
         }
 
-        if (!$this->hasCastAttributeType($type)) {
+        if (! $this->hasCastAttributeType($type)) {
             $type = $this->hasAttributesGetCastType($key);
         }
 
@@ -116,7 +118,7 @@ trait HasAttributesCast
      * @param bool $serialized
      * @return mixed
      */
-    protected function castAttribute($key, $value, $serialized = false)
+    public function castAttribute($key, $value, $serialized = false)
     {
         if (is_null($value)) {
             return $value;
@@ -140,7 +142,7 @@ trait HasAttributesCast
      * @param mixed $value
      * @return mixed
      */
-    protected function uncastAttribute($key, $value)
+    public function uncastAttribute($key, $value)
     {
         if (is_null($value)) {
             return $value;
@@ -166,14 +168,89 @@ trait HasAttributesCast
      */
     public function setAttribute($key, $value)
     {
-        if (!$this->hasSetMutator($key)
-            && $this->hasCast($key)
-            && $this->hasUncastAttributeType($this->getCastType($key))) {
+        if (! $this->hasSetMutator($key) &&
+            $this->hasCast($key) &&
+            $this->hasUncastAttributeType($this->getCastType($key))) {
             $this->attributes[$key] = $this->uncastAttribute($key, $value);
             return $this;
         }
 
         return $this->hasAttributesSetAttribute($key, $value);
+    }
+
+    /**
+     * Get an attribute from the model.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    public function getRawAttribute($key)
+    {
+        if (! $key) {
+            return;
+        }
+
+        if (array_key_exists($key, $this->attributes) ||
+            $this->hasGetMutator($key)) {
+            return $this->getAttributeFromArray($key);
+        }
+
+        return $this->getAttribute($key);
+    }
+
+    /**
+     * Get an attribute from the model.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    public function getSerializedAttribute($key)
+    {
+        if (! $key) {
+            return;
+        }
+
+        if (array_key_exists($key, $this->attributes) ||
+            $this->hasGetMutator($key)) {
+            $value = $this->getAttributeFromArray($key);
+
+            if ($this->hasGetMutator($key)) {
+                return $this->mutateAttribute($key, $value, true);
+            }
+
+            if ($this->hasCast($key)) {
+                return $this->castAttribute($key, $value, true);
+            }
+        }
+
+        return $this->getAttribute($key);
+    }
+
+    /**
+     * Get the value of an attribute using its mutator.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @param bool $serialized
+     * @return mixed
+     */
+    protected function mutateAttribute($key, $value, $serialized = false)
+    {
+        return $this->{'get'.Str::studly($key).'Attribute'}($value, $serialized);
+    }
+
+    /**
+     * Get the value of an attribute using its mutator for array conversion.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function mutateAttributeForArray($key, $value)
+    {
+        $value = $this->mutateAttribute($key, $value, true);
+
+        return $value instanceof Arrayable ? $value->toArray() : $value;
     }
 
     /**
@@ -186,7 +263,7 @@ trait HasAttributesCast
     protected function addCastAttributesToArray(array $attributes, array $mutatedAttributes)
     {
         foreach ($this->getCasts() as $key => $value) {
-            if (!array_key_exists($key, $attributes) || in_array($key, $mutatedAttributes)) {
+            if (! array_key_exists($key, $attributes) || in_array($key, $mutatedAttributes)) {
                 continue;
             }
 
@@ -208,7 +285,7 @@ trait HasAttributesCast
      */
     public function originalIsEquivalent($key, $current)
     {
-        if (!array_key_exists($key, $this->original)) {
+        if (! array_key_exists($key, $this->original)) {
             return false;
         }
 
@@ -224,5 +301,54 @@ trait HasAttributesCast
         }
 
         return $this->hasAttributesOriginalIsEquivalent($key, $current);
+    }
+
+    /**
+     * Get the queueable identity for the entity.
+     *
+     * @return mixed
+     */
+    public function getQueueableId()
+    {
+        if ($this instanceof \Illuminate\Database\Eloquent\Relations\MorphPivot) {
+            if (isset($this->attributes[$this->getKeyName()])) {
+                return $this->getSerializedAttribute($this->getKeyName());
+            }
+
+            return sprintf(
+                '%s:%s:%s:%s:%s:%s',
+                $this->foreignKey,
+                $this->getSerializedAttribute($this->foreignKey),
+                $this->relatedKey,
+                $this->getSerializedAttribute($this->relatedKey),
+                $this->morphType,
+                $this->morphClass
+            );
+        } elseif ($this instanceof \Illuminate\Database\Eloquent\Relations\Pivot) {
+            if (isset($this->attributes[$this->getKeyName()])) {
+                return $this->getSerializedAttribute($this->getKeyName());
+            }
+
+            return sprintf(
+                '%s:%s:%s:%s',
+                $this->foreignKey,
+                $this->getSerializedAttribute($this->foreignKey),
+                $this->relatedKey,
+                $this->getSerializedAttribute($this->relatedKey)
+            );
+        }
+
+        return $this->getSerializedAttribute($this->getKeyName());
+    }
+
+    /**
+     * Create a new Eloquent query builder for the model.
+     *
+     * @param \Illuminate\Database\Query\Builder $query
+     * @return \JnJairo\Laravel\EloquentCast\Builder|static
+     */
+    public function newEloquentBuilder($query)
+    {
+        return new Builder($query);
     }
 }
