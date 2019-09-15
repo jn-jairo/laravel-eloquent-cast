@@ -1,15 +1,18 @@
 # Changelog
 
-## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.2...master)
+## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.3...master)
+
+## [v0.0.3 (2019-09-14)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.2...v0.0.3)
 
 ### Added
-- Uncast `Model::where()`, `Model::whereIn()` and `Model::whereBetween()` value attribute
-- Use serialized cast in `Model::getQueueableId()`
-- Methods `Model::getRawAttribute()` and `Model::getSerializedAttribute()`
+- Laravel 6 support
+- Test using [orchestral/testbench](https://github.com/orchestral/testbench)
 
 ### Changed
-- Minimum Laravel version support 5.7
-- Sub-query closure in `Model::where()` and `Model::whereIn()` value attribute now accepts return a query
+- Minimal PHP version 7.2
+- Minimal Laravel version 5.8
+- Cast using [jn-jairo/laravel-cast](https://github.com/jn-jairo/laravel-cast)
+- Removed custom cast using methods `Model::cast<AttributeType>Attribute()` and `Model::uncast<AttributeType>Attribute()`
 
 ## [v0.0.2 (2019-03-02)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.1...v0.0.2)
 

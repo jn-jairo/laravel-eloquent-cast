@@ -3,13 +3,14 @@
 [![Latest Stable Version](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/v/stable)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
 [![License](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/license)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
 
-# Custom cast for Laravel Eloquent
+# Cast for Laravel Eloquent
 
-This package allows you to create custom cast for Laravel Eloquent attributes.
+This package extends the built-in [attribute casting](https://laravel.com/docs/eloquent-mutators#attribute-casting)
+with the [jn-jairo/laravel-cast](https://github.com/jn-jairo/laravel-cast) package.
 
 ## Requirements
 
-- Laravel Framework >= 5.7
+- Laravel Framework >= 5.8
 
 ## Installation
 
@@ -18,69 +19,69 @@ You can install the package via composer:
 ```bash
 composer require jn-jairo/laravel-eloquent-cast
 ```
+## Usage
 
-## Example
-
-Create a `\App\Model` that extends the `\Illuminate\Database\Eloquent\Model` and use the `\JnJairo\Laravel\EloquentCast\HasAttributesCast`.
-
-Then write the cast and uncast methods in the format `castCustomTypeAttribute` and `uncastCustomTypeAttribute` where `CustomType` is the "studly" cased name of the type, in this example `custom_type`.
+Use the trait `\JnJairo\Laravel\EloquentCast\HasAttributesCast` in a `\Illuminate\Database\Eloquent\Model`.
+In the `$casts` property of the model set the attribute name as the key and the type:format as the value.
 
 ```php
 <?php
 
 namespace App;
 
-use Illuminate\Database\Eloquent\Model as IlluminateModel;
+use Illuminate\Database\Eloquent\Model;
 use JnJairo\Laravel\EloquentCast\HasAttributesCast;
-
-class Model extends IlluminateModel
-{
-    use HasAttributesCast;
-
-    /**
-     * Cast custom_type attribute.
-     *
-     * @param mixed  $value      The value to be casted.
-     * @param string $format     Optional format.
-     * @param bool   $serialized If need to be casted to serialize as array/json.
-     * @return mixed
-     */
-    protected function castCustomTypeAttribute($value, $format = '', $serialized = false)
-    {
-        // The code to cast here
-    }
-
-    /**
-     * Uncast custom_type attribute.
-     *
-     * @param mixed  $value  The value to be uncasted.
-     * @param string $format Optional format.
-     * @return mixed
-     */
-    protected function uncastCustomTypeAttribute($value, $format = '')
-    {
-        // The code to uncast here
-    }
-}
-```
-
-So just use the `\App\Model` instead of the `\Illuminate\Database\Eloquent\Model` and your custom casts will be available.
-
-```php
-<?php
-
-namespace App;
-
-use App\Model;
 
 class Foo extends Model
 {
+    use HasAttributesCast;
+
     protected $casts = [
-        'foo' => 'custom_type',
-        'bar' => 'custom_type:someformat',
+        'uuid' => 'uuid',
+        'is_admin' => 'boolean',
+        'created_at' => 'datetime:Y-m-d H:i:s',
     ];
 }
 ```
+
+The attribute is casted for a `PHP` type in the getter and/or with a suffix, for a `database` type in the setter, and for a `json` type when serialized to `array`/`json`.
+
+## Example
+
+```php
+$foo = new Foo();
+$foo->uuid = '72684d25-b173-468d-8d45-2a10b2cc3e9f';
+$foo->is_admin = 1;
+$foo->created_at = '2000-01-01 00:00:00';
+
+print_r(gettype($foo->uuid));
+// string
+
+print_r(get_class($foo->uuid_));
+// Ramsey\Uuid\Uuid
+
+var_dump($foo->is_admin);
+// bool(true)
+
+print_r($foo->created_at);
+Illuminate\Support\Carbon Object
+(
+    [date] => 2000-01-01 00:00:00.000000
+    [timezone_type] => 3
+    [timezone] => UTC
+)
+```
+
+## Configuration
+
+Publish the configuration to `config/eloquent-cast.php`.
+
+```bash
+php artisan vendor:publish --provider=JnJairo\\Laravel\\EloquentCast\\EloquentCastServiceProvider
+```
+
+In the default configuration the attribute is casted for a `PHP` type in the getter and with the `_` suffix, except for the type `uuid` which is casted only with the `_` suffix,
+because to cast a primary/foreign key directly in the getter brakes the relations between the eloquent models.
 
 ## License
 

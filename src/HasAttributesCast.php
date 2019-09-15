@@ -2,158 +2,236 @@
 
 namespace JnJairo\Laravel\EloquentCast;
 
-use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Database\Eloquent\Concerns\HasAttributes;
 use Illuminate\Support\Str;
-use JnJairo\Laravel\EloquentCast\Builder;
+use JnJairo\Laravel\Cast\Facades\Cast;
 
 trait HasAttributesCast
 {
-    use HasAttributes {
-        HasAttributes::addCastAttributesToArray as protected hasAttributesAddCastAttributesToArray;
-        HasAttributes::castAttribute as protected hasAttributesCastAttribute;
-        HasAttributes::getCastType as protected hasAttributesGetCastType;
-        HasAttributes::originalIsEquivalent as protected hasAttributesOriginalIsEquivalent;
-        HasAttributes::setAttribute as protected hasAttributesSetAttribute;
-    }
-
-    /**
-     * Determine if a cast exists for a type.
-     *
-     * @param string $type
-     * @return bool
-     */
-    protected function hasCastAttributeType($type)
-    {
-        return method_exists($this, 'cast' . Str::studly($type) . 'Attribute');
-    }
-
-    /**
-     * Determine if a uncast exists for a type.
-     *
-     * @param string $type
-     * @return bool
-     */
-    protected function hasUncastAttributeType($type)
-    {
-        return method_exists($this, 'uncast' . Str::studly($type) . 'Attribute');
-    }
-
-    /**
-     * Cast an attribute value to a type.
-     *
-     * @param string $type
-     * @param mixed $value
-     * @param string $format
-     * @param bool $serialized
-     * @return mixed
-     */
-    protected function castAttributeType($type, $value, $format = '', $serialized = false)
-    {
-        if ($this->hasCastAttributeType($type)) {
-            $value = $this->{'cast' . Str::studly($type) . 'Attribute'}($value, $format, $serialized);
-        }
-
-        return $value;
-    }
-
-    /**
-     * Uncast an attribute value from a type.
-     *
-     * @param string $type
-     * @param mixed $value
-     * @param string $format
-     * @param bool $serialized
-     * @return mixed
-     */
-    protected function uncastAttributeType($type, $value, $format = '')
-    {
-        if ($this->hasCastAttributeType($type)) {
-            $value = $this->{'uncast' . Str::studly($type) . 'Attribute'}($value, $format);
-        }
-
-        return $value;
-    }
-
     /**
      * Get the type of cast for a model attribute.
      *
      * @param string $key
      * @return string
      */
-    protected function getCastType($key)
+    protected function getCastType($key) : string
     {
-        list($type, $format) = $this->getCastTypeFormat($key);
+        $type = '';
+
+        $casts = $this->getCasts();
+
+        if (isset($casts[$key])) {
+            $type = explode(':', $casts[$key], 2)[0];
+        }
 
         return $type;
     }
 
     /**
-     * Get the type and format of cast for a model attribute.
+     * Get the format of cast for a model attribute.
      *
      * @param string $key
-     * @return array
+     * @return string
      */
-    protected function getCastTypeFormat($key)
+    protected function getCastFormat($key) : string
     {
-        $type = trim(strtolower($this->getCasts()[$key]));
         $format = '';
 
-        if (strpos($type, ':') !== false) {
-            list($type, $format) = explode(':', $type, 2);
-        }
+        $casts = $this->getCasts();
 
-        if (! $this->hasCastAttributeType($type)) {
-            $type = $this->hasAttributesGetCastType($key);
-        }
+        if (isset($casts[$key])) {
+            $typeFormat = explode(':', $casts[$key], 2);
 
-        return array($type, $format);
-    }
-
-    /**
-     * Cast an attribute.
-     *
-     * @param string $key
-     * @param mixed $value
-     * @param bool $serialized
-     * @return mixed
-     */
-    public function castAttribute($key, $value, $serialized = false)
-    {
-        if (is_null($value)) {
-            return $value;
-        }
-
-        if ($this->hasCast($key)) {
-            list($type, $format) = $this->getCastTypeFormat($key);
-
-            if ($this->hasCastAttributeType($type)) {
-                return $this->castAttributeType($type, $value, $format, $serialized);
+            if (isset($typeFormat[1])) {
+                $type = $typeFormat[1];
             }
         }
 
-        return $this->hasAttributesCastAttribute($key, $value);
+        return $format;
     }
 
     /**
-     * Uncast an attribute.
+     * Cast an attribute to a native PHP type.
      *
      * @param string $key
      * @param mixed $value
      * @return mixed
      */
-    public function uncastAttribute($key, $value)
+    protected function castAttribute($key, $value)
     {
-        if (is_null($value)) {
-            return $value;
+        $keyBase = $this->getBaseAttributeName($key);
+
+        $type = $this->getCastType($keyBase);
+        $format = $this->getCastFormat($keyBase);
+
+        if ($type) {
+            $mode = config('eloquent-cast.mode');
+            $suffixOnly = config('eloquent-cast.suffix_only');
+
+            $isSuffix = $key !== $keyBase;
+            $isSuffixOnly = in_array($type, $suffixOnly);
+
+            if ($mode === 'getter' && ! $isSuffix
+                || $mode === 'suffix' && $isSuffix
+                || $mode === 'auto' && ($isSuffix || ! $isSuffixOnly)) {
+                return Cast::cast($value, $type, $format);
+            }
         }
 
-        if ($this->hasCast($key)) {
-            list($type, $format) = $this->getCastTypeFormat($key);
+        return $value;
+    }
 
-            if ($this->hasUncastAttributeType($type)) {
-                $value = $this->uncastAttributeType($type, $value, $format);
+    /**
+     * Cast an attribute to a database type.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function castDbAttribute($key, $value)
+    {
+        $type = $this->getCastType($key);
+        $format = $this->getCastFormat($key);
+
+        return $type ? Cast::castDb($value, $type, $format) : $value;
+    }
+
+    /**
+     * Cast an attribute to a json type.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function castJsonAttribute($key, $value)
+    {
+        $type = $this->getCastType($key);
+        $format = $this->getCastFormat($key);
+
+        return $type ? Cast::castJson($value, $type, $format) : $value;
+    }
+
+    /**
+     * Determine if the new and old values for a given key are equivalent.
+     *
+     * @param string $key
+     * @param mixed $current
+     * @return bool
+     */
+    public function originalIsEquivalent($key, $current) : bool
+    {
+        if (! array_key_exists($key, $this->original)) {
+            return false;
+        }
+
+        $original = $this->getOriginal($key);
+
+        if ($current === $original) {
+            return true;
+        } elseif (is_null($current)) {
+            return false;
+        } elseif ($this->hasCast($key)) {
+            return $this->castAttribute($key, $current) === $this->castAttribute($key, $original)
+                || $this->castDbAttribute($key, $current) === $this->castDbAttribute($key, $original)
+                || $this->castJsonAttribute($key, $current) === $this->castJsonAttribute($key, $original);
+        }
+
+        return is_numeric($current) && is_numeric($original)
+                && strcmp((string) $current, (string) $original) === 0;
+    }
+
+    /**
+     * Add the casted attributes to the attributes array.
+     *
+     * @param array $attributes
+     * @param array $mutatedAttributes
+     * @return array
+     */
+    protected function addCastAttributesToArray(array $attributes, array $mutatedAttributes) : array
+    {
+        foreach ($this->getCasts() as $key => $value) {
+            if (! array_key_exists($key, $attributes) || in_array($key, $mutatedAttributes)) {
+                continue;
             }
+
+            $attributes[$key] = $this->castJsonAttribute($key, $attributes[$key]);
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Get the base name for the attribute.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    protected function getBaseAttributeName(string $key)
+    {
+        $mode = config('eloquent-cast.mode');
+
+        if ($mode === 'auto' || $mode === 'suffix') {
+            $suffix = config('eloquent-cast.suffix');
+            if (Str::endsWith($key, $suffix)) {
+                return Str::replaceLast($suffix, '', $key);
+            }
+        }
+
+        return $key;
+    }
+
+    /**
+     * Get an attribute from the model.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    public function getAttribute($key)
+    {
+        if (! $key) {
+            return;
+        }
+
+        if (array_key_exists($key, $this->attributes) ||
+            $this->hasGetMutator($key)) {
+            return $this->getAttributeValue($key);
+        }
+
+        $keyBase = $this->getBaseAttributeName($key);
+
+        if (array_key_exists($keyBase, $this->attributes)) {
+            return $this->getAttributeValue($key);
+        }
+
+        if (method_exists(self::class, $key)) {
+            return;
+        }
+
+        return $this->getRelationValue($key);
+    }
+
+    /**
+     * Get a plain attribute (not a relationship).
+     *
+     * @param string $key
+     * @return mixed
+     */
+    public function getAttributeValue($key)
+    {
+        $keyBase = $this->getBaseAttributeName($key);
+
+        $value = $this->getAttributeFromArray($keyBase);
+
+        if ($this->hasGetMutator($key)) {
+            return $this->mutateAttribute($key, $value);
+        }
+
+        if ($this->hasCast($keyBase)) {
+            return $this->castAttribute($key, $value);
+        }
+
+        if (in_array($key, $this->getDates()) &&
+            ! is_null($value)) {
+            return $this->asDateTime($value);
         }
 
         return $value;
@@ -168,187 +246,30 @@ trait HasAttributesCast
      */
     public function setAttribute($key, $value)
     {
-        if (! $this->hasSetMutator($key) &&
-            $this->hasCast($key) &&
-            $this->hasUncastAttributeType($this->getCastType($key))) {
-            $this->attributes[$key] = $this->uncastAttribute($key, $value);
-            return $this;
+        if ($this->hasSetMutator($key)) {
+            return $this->setMutatedAttributeValue($key, $value);
+        } elseif ($this->hasCast($key)) {
+            $value = $this->castDbAttribute($key, $value);
         }
 
-        return $this->hasAttributesSetAttribute($key, $value);
+        if (Str::contains($key, '->')) {
+            return $this->fillJsonAttribute($key, $value);
+        }
+
+        $this->attributes[$key] = $value;
+
+        return $this;
     }
 
     /**
-     * Get an attribute from the model.
+     * Retrieve the model for a bound value.
      *
-     * @param string $key
-     * @return mixed
-     */
-    public function getRawAttribute($key)
-    {
-        if (! $key) {
-            return;
-        }
-
-        if (array_key_exists($key, $this->attributes) ||
-            $this->hasGetMutator($key)) {
-            return $this->getAttributeFromArray($key);
-        }
-
-        return $this->getAttribute($key);
-    }
-
-    /**
-     * Get an attribute from the model.
-     *
-     * @param string $key
-     * @return mixed
-     */
-    public function getSerializedAttribute($key)
-    {
-        if (! $key) {
-            return;
-        }
-
-        if (array_key_exists($key, $this->attributes) ||
-            $this->hasGetMutator($key)) {
-            $value = $this->getAttributeFromArray($key);
-
-            if ($this->hasGetMutator($key)) {
-                return $this->mutateAttribute($key, $value, true);
-            }
-
-            if ($this->hasCast($key)) {
-                return $this->castAttribute($key, $value, true);
-            }
-        }
-
-        return $this->getAttribute($key);
-    }
-
-    /**
-     * Get the value of an attribute using its mutator.
-     *
-     * @param string $key
      * @param mixed $value
-     * @param bool $serialized
-     * @return mixed
+     * @return \Illuminate\Database\Eloquent\Model|null
      */
-    protected function mutateAttribute($key, $value, $serialized = false)
+    public function resolveRouteBinding($value)
     {
-        return $this->{'get'.Str::studly($key).'Attribute'}($value, $serialized);
-    }
-
-    /**
-     * Get the value of an attribute using its mutator for array conversion.
-     *
-     * @param string $key
-     * @param mixed $value
-     * @return mixed
-     */
-    protected function mutateAttributeForArray($key, $value)
-    {
-        $value = $this->mutateAttribute($key, $value, true);
-
-        return $value instanceof Arrayable ? $value->toArray() : $value;
-    }
-
-    /**
-     * Add the casted attributes to the attributes array.
-     *
-     * @param array $attributes
-     * @param array $mutatedAttributes
-     * @return array
-     */
-    protected function addCastAttributesToArray(array $attributes, array $mutatedAttributes)
-    {
-        foreach ($this->getCasts() as $key => $value) {
-            if (! array_key_exists($key, $attributes) || in_array($key, $mutatedAttributes)) {
-                continue;
-            }
-
-            if ($this->hasCastAttributeType($this->getCastType($key))) {
-                $attributes[$key] = $this->castAttribute($key, $attributes[$key], true);
-                $mutatedAttributes[] = $key;
-            }
-        }
-
-        return $this->hasAttributesAddCastAttributesToArray($attributes, $mutatedAttributes);
-    }
-
-    /**
-     * Determine if the new and old values for a given key are equivalent.
-     *
-     * @param string $key
-     * @param mixed $current
-     * @return bool
-     */
-    public function originalIsEquivalent($key, $current)
-    {
-        if (! array_key_exists($key, $this->original)) {
-            return false;
-        }
-
-        $original = $this->getOriginal($key);
-
-        if ($current === $original) {
-            return true;
-        } elseif (is_null($current)) {
-            return false;
-        } elseif ($this->hasCast($key) && $this->hasCastAttributeType($this->getCastType($key))) {
-            return $this->castAttribute($key, $current) === $this->castAttribute($key, $original)
-                || $this->castAttribute($key, $current, true) === $this->castAttribute($key, $original, true);
-        }
-
-        return $this->hasAttributesOriginalIsEquivalent($key, $current);
-    }
-
-    /**
-     * Get the queueable identity for the entity.
-     *
-     * @return mixed
-     */
-    public function getQueueableId()
-    {
-        if ($this instanceof \Illuminate\Database\Eloquent\Relations\MorphPivot) {
-            if (isset($this->attributes[$this->getKeyName()])) {
-                return $this->getSerializedAttribute($this->getKeyName());
-            }
-
-            return sprintf(
-                '%s:%s:%s:%s:%s:%s',
-                $this->foreignKey,
-                $this->getSerializedAttribute($this->foreignKey),
-                $this->relatedKey,
-                $this->getSerializedAttribute($this->relatedKey),
-                $this->morphType,
-                $this->morphClass
-            );
-        } elseif ($this instanceof \Illuminate\Database\Eloquent\Relations\Pivot) {
-            if (isset($this->attributes[$this->getKeyName()])) {
-                return $this->getSerializedAttribute($this->getKeyName());
-            }
-
-            return sprintf(
-                '%s:%s:%s:%s',
-                $this->foreignKey,
-                $this->getSerializedAttribute($this->foreignKey),
-                $this->relatedKey,
-                $this->getSerializedAttribute($this->relatedKey)
-            );
-        }
-
-        return $this->getSerializedAttribute($this->getKeyName());
-    }
-
-    /**
-     * Create a new Eloquent query builder for the model.
-     *
-     * @param \Illuminate\Database\Query\Builder $query
-     * @return \JnJairo\Laravel\EloquentCast\Builder|static
-     */
-    public function newEloquentBuilder($query)
-    {
-        return new Builder($query);
+        $value = $this->castDbAttribute($this->getRouteKeyName(), $value);
+        return $this->where($this->getRouteKeyName(), $value)->first();
     }
 }

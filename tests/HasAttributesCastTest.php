@@ -2,482 +2,502 @@
 
 namespace JnJairo\Laravel\EloquentCast\Tests;
 
-use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Carbon;
-use JnJairo\Laravel\EloquentCast\Tests\Stubs\EloquentModelCastingStub;
-use JnJairo\Laravel\EloquentCast\Tests\Stubs\EloquentModelCastingMorphPivotStub;
-use JnJairo\Laravel\EloquentCast\Tests\Stubs\EloquentModelCastingPivotStub;
-use JnJairo\Laravel\EloquentCast\Tests\Stubs\CustomType;
-use JnJairo\Laravel\EloquentCast\Tests\TestCase;
-use stdClass;
+use JnJairo\Laravel\Cast\Facades\Cast;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\DummyModel;
+use JnJairo\Laravel\EloquentCast\Tests\OrchestraTestCase as TestCase;
+use Ramsey\Uuid\Uuid;
 
 /**
  * @testdox Has attributes cast
  */
 class HasAttributesCastTest extends TestCase
 {
-    public function test_dirty_attributes()
+    /**
+     * Define environment setup.
+     *
+     * @param \Illuminate\Foundation\Application $app
+     * @return void
+     */
+    protected function getEnvironmentSetUp($app)
     {
-        $model = new EloquentModelCastingStub(['foo' => '1', 'bar' => 2, 'baz' => 3]);
+        // Setup default database to use sqlite :memory:
+        $app['config']->set('database.default', 'testbench');
+        $app['config']->set('database.connections.testbench', [
+            'driver'   => 'sqlite',
+            'database' => ':memory:',
+            'prefix'   => '',
+        ]);
+    }
+
+    public function setUp() : void
+    {
+        parent::setUp();
+
+        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+
+        config([
+            'eloquent-cast.mode' => 'auto',
+            'eloquent-cast.suffix' => '_',
+            'eloquent-cast.suffix_only' => [],
+        ]);
+    }
+
+    public function getValues() : array
+    {
+        $php = [
+            'uuid' => Cast::cast('', 'uuid'),
+            'boolean' => Cast::cast(true, 'boolean'),
+            'integer' => Cast::cast(123, 'integer'),
+            'float' => Cast::cast(123.45, 'float'),
+            'decimal' => Cast::cast(123.45, 'decimal', '2'),
+            'date' => Cast::cast('1969-07-20', 'date'),
+            'datetime' => Cast::cast('1969-07-20 22:56:00', 'datetime'),
+            'timestamp' => Cast::cast('1969-07-20 22:56:00', 'timestamp'),
+            'json' => Cast::cast(['foo' => 'bar'], 'json'),
+            'array' => Cast::cast(['foo' => 'bar'], 'array'),
+            'object' => Cast::cast(['foo' => 'bar'], 'object'),
+            'collection' => Cast::cast(['foo' => 'bar'], 'collection'),
+            'text' => Cast::cast(123, 'text'),
+            'no_cast' => '1',
+        ];
+
+        $db = [
+            'uuid' => Cast::castDb($php['uuid'], 'uuid'),
+            'boolean' => Cast::castDb($php['boolean'], 'boolean'),
+            'integer' => Cast::castDb($php['integer'], 'integer'),
+            'float' => Cast::castDb($php['float'], 'float'),
+            'decimal' => Cast::castDb($php['decimal'], 'decimal', '2'),
+            'date' => Cast::castDb($php['date'], 'date'),
+            'datetime' => Cast::castDb($php['datetime'], 'datetime'),
+            'timestamp' => Cast::castDb($php['timestamp'], 'timestamp'),
+            'json' => Cast::castDb($php['json'], 'json'),
+            'array' => Cast::castDb($php['array'], 'array'),
+            'object' => Cast::castDb($php['object'], 'object'),
+            'collection' => Cast::castDb($php['collection'], 'collection'),
+            'text' => Cast::castDb($php['text'], 'text'),
+            'no_cast' => $php['no_cast'],
+        ];
+
+        $json = [
+            'uuid' => Cast::castJson($php['uuid'], 'uuid'),
+            'boolean' => Cast::castJson($php['boolean'], 'boolean'),
+            'integer' => Cast::castJson($php['integer'], 'integer'),
+            'float' => Cast::castJson($php['float'], 'float'),
+            'decimal' => Cast::castJson($php['decimal'], 'decimal', '2'),
+            'date' => Cast::castJson($php['date'], 'date'),
+            'datetime' => Cast::castJson($php['datetime'], 'datetime'),
+            'timestamp' => Cast::castJson($php['timestamp'], 'timestamp'),
+            'json' => Cast::castJson($php['json'], 'json'),
+            'array' => Cast::castJson($php['array'], 'array'),
+            'object' => Cast::castJson($php['object'], 'object'),
+            'collection' => Cast::castJson($php['collection'], 'collection'),
+            'text' => Cast::castJson($php['text'], 'text'),
+            'no_cast' => $php['no_cast'],
+        ];
+
+        return [
+            'php' => $php,
+            'db' => $db,
+            'json' => $json,
+        ];
+    }
+
+    public function getNewValues() : array
+    {
+        $php = [
+            'uuid' => Cast::cast('', 'uuid'),
+            'boolean' => Cast::cast(false, 'boolean'),
+            'integer' => Cast::cast(1234, 'integer'),
+            'float' => Cast::cast(1234.56, 'float'),
+            'decimal' => Cast::cast(1234.56, 'decimal', '2'),
+            'date' => Cast::cast('1969-07-21', 'date'),
+            'datetime' => Cast::cast('1969-07-21 22:56:01', 'datetime'),
+            'timestamp' => Cast::cast('1969-07-21 22:56:01', 'timestamp'),
+            'json' => Cast::cast(['foo' => 'baz'], 'json'),
+            'array' => Cast::cast(['foo' => 'baz'], 'array'),
+            'object' => Cast::cast(['foo' => 'baz'], 'object'),
+            'collection' => Cast::cast(['foo' => 'baz'], 'collection'),
+            'text' => Cast::cast(1234, 'text'),
+            'no_cast' => '2',
+            'not_exists' => 'foo',
+            'foo' => 'foo',
+        ];
+
+        $db = [
+            'uuid' => Cast::castDb($php['uuid'], 'uuid'),
+            'boolean' => Cast::castDb($php['boolean'], 'boolean'),
+            'integer' => Cast::castDb($php['integer'], 'integer'),
+            'float' => Cast::castDb($php['float'], 'float'),
+            'decimal' => Cast::castDb($php['decimal'], 'decimal', '2'),
+            'date' => Cast::castDb($php['date'], 'date'),
+            'datetime' => Cast::castDb($php['datetime'], 'datetime'),
+            'timestamp' => Cast::castDb($php['timestamp'], 'timestamp'),
+            'json' => Cast::castDb($php['json'], 'json'),
+            'array' => Cast::castDb($php['array'], 'array'),
+            'object' => Cast::castDb($php['object'], 'object'),
+            'collection' => Cast::castDb($php['collection'], 'collection'),
+            'text' => Cast::castDb($php['text'], 'text'),
+            'no_cast' => $php['no_cast'],
+            'not_exists' => $php['not_exists'],
+            'foo' => $php['foo'],
+        ];
+
+        $json = [
+            'uuid' => Cast::castJson($php['uuid'], 'uuid'),
+            'boolean' => Cast::castJson($php['boolean'], 'boolean'),
+            'integer' => Cast::castJson($php['integer'], 'integer'),
+            'float' => Cast::castJson($php['float'], 'float'),
+            'decimal' => Cast::castJson($php['decimal'], 'decimal', '2'),
+            'date' => Cast::castJson($php['date'], 'date'),
+            'datetime' => Cast::castJson($php['datetime'], 'datetime'),
+            'timestamp' => Cast::castJson($php['timestamp'], 'timestamp'),
+            'json' => Cast::castJson($php['json'], 'json'),
+            'array' => Cast::castJson($php['array'], 'array'),
+            'object' => Cast::castJson($php['object'], 'object'),
+            'collection' => Cast::castJson($php['collection'], 'collection'),
+            'text' => Cast::castJson($php['text'], 'text'),
+            'no_cast' => $php['no_cast'],
+            'not_exists' => $php['not_exists'],
+            'foo' => $php['foo'],
+        ];
+
+        return [
+            'php' => $php,
+            'db' => $db,
+            'json' => $json,
+        ];
+    }
+
+    public function test_dirty() : void
+    {
+        $values = $this->getValues();
+        $newValues = $this->getNewValues();
+
+        $model = new DummyModel($values['db']);
         $model->syncOriginal();
-        $model->foo = 1;
-        $model->bar = 20;
-        $model->baz = 30;
-        $model->fooBar = 4;
 
-        $this->assertTrue($model->isDirty());
-        $this->assertFalse($model->isDirty('foo'));
-        $this->assertTrue($model->isDirty('bar'));
-        $this->assertTrue($model->isDirty('foo', 'bar'));
-        $this->assertTrue($model->isDirty(['foo', 'bar']));
-        $this->assertTrue($model->isDirty('fooBar'));
+        foreach ($values['php'] as $key => $value) {
+            $model->$key = $value;
+        }
+
+        $this->assertFalse($model->isDirty(), 'Same value');
+
+        foreach ($values['php'] as $key => $value) {
+            $this->assertFalse($model->isDirty($key), 'Same value ' . $key);
+        }
+
+        foreach ($newValues['php'] as $key => $value) {
+            $model->$key = $value;
+        }
+
+        $this->assertTrue($model->isDirty(), 'New value');
+
+        foreach ($newValues['php'] as $key => $value) {
+            $this->assertTrue($model->isDirty($key), 'New value ' . $key);
+        }
+
+        foreach ($newValues['php'] as $key => $value) {
+            $model->$key = null;
+        }
+
+        $this->assertTrue($model->isDirty(), 'Null value');
+
+        foreach ($newValues['php'] as $key => $value) {
+            $this->assertTrue($model->isDirty($key), 'Null value ' . $key);
+        }
     }
 
-    public function test_dirty_on_cast_or_date_attributes()
+    public function test_get_attribute() : void
     {
-        $model = new EloquentModelCastingStub;
-        $model->setDateFormat('Y-m-d H:i:s');
-        $model->bool_attribute = 1;
-        $model->foo = 1;
-        $model->bar = '2017-03-18';
-        $model->date_attribute = '2017-03-18';
-        $model->datetime_attribute = '2017-03-23 22:17:00';
-        $model->custom_attribute = '{"foo": "foo_bar", "bar": "123"}';
-        $model->custom_formatted_attribute = '{"foo": "foo_bar", "bar": "123"}';
-        $model->simple_attribute = 'foo_bar';
-        $model->simple_formatted_attribute = 'foo_bar';
+        $values = $this->getValues();
+
+        $model = new DummyModel($values['db']);
         $model->syncOriginal();
 
-        $model->bool_attribute = true;
-        $model->foo = true;
-        $model->bar = '2017-03-18 00:00:00';
-        $model->date_attribute = '2017-03-18 00:00:00';
-        $model->datetime_attribute = null;
-        $model->custom_attribute = ['foo' => 'fooBar', 'bar' => 123];
-        $model->custom_formatted_attribute = ['foo' => 'FooBar', 'bar' => 123];
-        $model->simple_attribute = 'fooBar';
-        $model->simple_formatted_attribute = 'FooBar';
-
-        $this->assertTrue($model->isDirty());
-        $this->assertTrue($model->isDirty('foo'));
-        $this->assertTrue($model->isDirty('bar'));
-        $this->assertFalse($model->isDirty('bool_attribute'));
-        $this->assertFalse($model->isDirty('date_attribute'));
-        $this->assertTrue($model->isDirty('datetime_attribute'));
-        $this->assertFalse($model->isDirty('custom_attribute'));
-        $this->assertFalse($model->isDirty('custom_formatted_attribute'));
-        $this->assertFalse($model->isDirty('simple_attribute'));
-        $this->assertFalse($model->isDirty('simple_formatted_attribute'));
+        $this->assertInstanceOf(Uuid::class, $model->uuid, 'uuid class');
+        $this->assertSame($values['php']['uuid']->toString(), $model->uuid->toString(), 'uuid');
+        $this->assertSame($values['php']['boolean'], $model->boolean, 'boolean');
+        $this->assertSame($values['php']['integer'], $model->integer, 'integer');
+        $this->assertSame($values['php']['float'], $model->float, 'float');
+        $this->assertEquals($values['php']['decimal'], $model->decimal, 'decimal');
+        $this->assertInstanceOf(Carbon::class, $model->date, 'date class');
+        $this->assertSame($values['php']['date']->toDateString(), $model->date->toDateString(), 'date');
+        $this->assertInstanceOf(Carbon::class, $model->datetime, 'datetime class');
+        $this->assertSame(
+            $values['php']['datetime']->toDateTimeString(),
+            $model->datetime->toDateTimeString(),
+            'datetime'
+        );
+        $this->assertIsInt($model->timestamp, 'timestamp type');
+        $this->assertSame($values['php']['timestamp'], $model->timestamp, 'timestamp');
+        $this->assertSame($values['php']['json'], $model->json, 'json');
+        $this->assertSame($values['php']['array'], $model->array, 'array');
+        $this->assertEquals($values['php']['object'], $model->object, 'object');
+        $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
+        $this->assertSame($values['php']['text'], $model->text, 'text');
+        $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
     }
 
-    public function test_model_attributes_are_casted_when_present_in_casts_array()
+    public function test_get_attribute_suffix() : void
     {
-        $model = new EloquentModelCastingStub;
-        $model->setDateFormat('Y-m-d H:i:s');
-        $model->int_attribute = '3';
-        $model->float_attribute = '4.0';
-        $model->string_attribute = 2.5;
-        $model->bool_attribute = 1;
-        $model->boolean_attribute = 0;
-        $model->object_attribute = ['foo' => 'bar'];
-        $obj = new stdClass;
-        $obj->foo = 'bar';
-        $model->array_attribute = $obj;
-        $model->json_attribute = ['foo' => 'bar'];
-        $model->date_attribute = '1969-07-20';
-        $model->datetime_attribute = '1969-07-20 22:56:00';
-        $model->timestamp_attribute = '1969-07-20 22:56:00';
-        $model->custom_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->custom_formatted_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->simple_attribute = 'foo_bar';
-        $model->simple_formatted_attribute = 'foo_bar';
+        $values = $this->getValues();
 
-        $this->assertIsInt($model->int_attribute);
-        $this->assertIsFloat($model->float_attribute);
-        $this->assertIsString($model->string_attribute);
-        $this->assertIsBool($model->bool_attribute);
-        $this->assertIsBool($model->boolean_attribute);
-        $this->assertIsObject($model->object_attribute);
-        $this->assertIsArray($model->array_attribute);
-        $this->assertIsArray($model->json_attribute);
-        $this->assertTrue($model->bool_attribute);
-        $this->assertFalse($model->boolean_attribute);
-        $this->assertEquals($obj, $model->object_attribute);
-        $this->assertEquals(['foo' => 'bar'], $model->array_attribute);
-        $this->assertEquals(['foo' => 'bar'], $model->json_attribute);
-        $this->assertEquals('{"foo":"bar"}', $model->getRawAttribute('json_attribute'));
-        $this->assertInstanceOf(Carbon::class, $model->date_attribute);
-        $this->assertInstanceOf(Carbon::class, $model->datetime_attribute);
-        $this->assertEquals('1969-07-20', $model->date_attribute->toDateString());
-        $this->assertEquals('1969-07-20 22:56:00', $model->datetime_attribute->toDateTimeString());
-        $this->assertEquals(-14173440, $model->timestamp_attribute);
-        $this->assertInstanceOf(CustomType::class, $model->custom_attribute);
-        $this->assertSame('fooBar', $model->custom_attribute->foo);
-        $this->assertSame(123, $model->custom_attribute->bar);
-        $this->assertInstanceOf(CustomType::class, $model->custom_formatted_attribute);
-        $this->assertSame('FooBar', $model->custom_formatted_attribute->foo);
-        $this->assertSame(123, $model->custom_formatted_attribute->bar);
-        $this->assertSame('fooBar', $model->simple_attribute);
-        $this->assertSame('FooBar', $model->simple_formatted_attribute);
+        $model = new DummyModel($values['db']);
+        $model->syncOriginal();
 
-        $arr = $model->toArray();
-
-        $this->assertIsInt($arr['int_attribute']);
-        $this->assertIsFloat($arr['float_attribute']);
-        $this->assertIsString($arr['string_attribute']);
-        $this->assertIsBool($arr['bool_attribute']);
-        $this->assertIsBool($arr['boolean_attribute']);
-        $this->assertIsObject($arr['object_attribute']);
-        $this->assertIsArray($arr['array_attribute']);
-        $this->assertIsArray($arr['json_attribute']);
-        $this->assertTrue($arr['bool_attribute']);
-        $this->assertFalse($arr['boolean_attribute']);
-        $this->assertEquals($obj, $arr['object_attribute']);
-        $this->assertEquals(['foo' => 'bar'], $arr['array_attribute']);
-        $this->assertEquals(['foo' => 'bar'], $arr['json_attribute']);
-        $this->assertEquals('1969-07-20 00:00:00', $arr['date_attribute']);
-        $this->assertEquals('1969-07-20 22:56:00', $arr['datetime_attribute']);
-        $this->assertEquals(-14173440, $arr['timestamp_attribute']);
-        $this->assertIsArray($arr['custom_attribute']);
-        $this->assertSame('fooBar', $arr['custom_attribute']['foo']);
-        $this->assertSame(123, $arr['custom_attribute']['bar']);
-        $this->assertIsArray($arr['custom_formatted_attribute']);
-        $this->assertSame('FooBar', $arr['custom_formatted_attribute']['foo']);
-        $this->assertSame(123, $arr['custom_formatted_attribute']['bar']);
-        $this->assertSame('fooBar', $arr['simple_attribute']);
-        $this->assertSame('FooBar', $arr['simple_formatted_attribute']);
+        $this->assertInstanceOf(Uuid::class, $model->uuid_, 'uuid class');
+        $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
+        $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
+        $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
+        $this->assertSame($values['php']['float'], $model->float_, 'float');
+        $this->assertEquals($values['php']['decimal'], $model->decimal_, 'decimal');
+        $this->assertInstanceOf(Carbon::class, $model->date_, 'date class');
+        $this->assertSame($values['php']['date']->toDateString(), $model->date_->toDateString(), 'date');
+        $this->assertInstanceOf(Carbon::class, $model->datetime_, 'datetime class');
+        $this->assertSame(
+            $values['php']['datetime']->toDateTimeString(),
+            $model->datetime_->toDateTimeString(),
+            'datetime'
+        );
+        $this->assertIsInt($model->timestamp_, 'timestamp type');
+        $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
+        $this->assertSame($values['php']['json'], $model->json_, 'json');
+        $this->assertSame($values['php']['array'], $model->array_, 'array');
+        $this->assertEquals($values['php']['object'], $model->object_, 'object');
+        $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
+        $this->assertSame($values['php']['text'], $model->text_, 'text');
     }
 
-    public function test_model_date_attribute_casting_resets_time()
+    public function test_get_attribute_array() : void
     {
-        $model = new EloquentModelCastingStub;
-        $model->setDateFormat('Y-m-d H:i:s');
-        $model->date_attribute = '1969-07-20 22:56:00';
+        $values = $this->getValues();
 
-        $this->assertEquals('1969-07-20 00:00:00', $model->date_attribute->toDateTimeString());
-
-        $arr = $model->toArray();
-        $this->assertEquals('1969-07-20 00:00:00', $arr['date_attribute']);
-    }
-
-    public function test_model_attribute_casting_preserves_null()
-    {
-        $model = new EloquentModelCastingStub;
-        $model->int_attribute = null;
-        $model->float_attribute = null;
-        $model->string_attribute = null;
-        $model->bool_attribute = null;
-        $model->boolean_attribute = null;
-        $model->object_attribute = null;
-        $model->array_attribute = null;
-        $model->json_attribute = null;
-        $model->date_attribute = null;
-        $model->datetime_attribute = null;
-        $model->timestamp_attribute = null;
-        $model->custom_attribute = null;
-        $model->custom_formatted_attribute = null;
-        $model->simple_attribute = null;
-        $model->simple_formatted_attribute = null;
-
-        $attributes = $model->getAttributes();
-
-        $this->assertNull($attributes['int_attribute']);
-        $this->assertNull($attributes['float_attribute']);
-        $this->assertNull($attributes['string_attribute']);
-        $this->assertNull($attributes['bool_attribute']);
-        $this->assertNull($attributes['boolean_attribute']);
-        $this->assertNull($attributes['object_attribute']);
-        $this->assertNull($attributes['array_attribute']);
-        $this->assertNull($attributes['json_attribute']);
-        $this->assertNull($attributes['date_attribute']);
-        $this->assertNull($attributes['datetime_attribute']);
-        $this->assertNull($attributes['timestamp_attribute']);
-        $this->assertNull($attributes['custom_attribute']);
-        $this->assertNull($attributes['custom_formatted_attribute']);
-        $this->assertNull($attributes['simple_attribute']);
-        $this->assertNull($attributes['simple_formatted_attribute']);
-
-        $this->assertNull($model->int_attribute);
-        $this->assertNull($model->float_attribute);
-        $this->assertNull($model->string_attribute);
-        $this->assertNull($model->bool_attribute);
-        $this->assertNull($model->boolean_attribute);
-        $this->assertNull($model->object_attribute);
-        $this->assertNull($model->array_attribute);
-        $this->assertNull($model->json_attribute);
-        $this->assertNull($model->date_attribute);
-        $this->assertNull($model->datetime_attribute);
-        $this->assertNull($model->timestamp_attribute);
-        $this->assertNull($model->custom_attribute);
-        $this->assertNull($model->custom_formatted_attribute);
-        $this->assertNull($model->simple_attribute);
-        $this->assertNull($model->simple_formatted_attribute);
+        $model = new DummyModel($values['db']);
+        $model->syncOriginal();
 
         $array = $model->toArray();
 
-        $this->assertNull($array['int_attribute']);
-        $this->assertNull($array['float_attribute']);
-        $this->assertNull($array['string_attribute']);
-        $this->assertNull($array['bool_attribute']);
-        $this->assertNull($array['boolean_attribute']);
-        $this->assertNull($array['object_attribute']);
-        $this->assertNull($array['array_attribute']);
-        $this->assertNull($array['json_attribute']);
-        $this->assertNull($array['date_attribute']);
-        $this->assertNull($array['datetime_attribute']);
-        $this->assertNull($array['timestamp_attribute']);
-        $this->assertNull($array['custom_attribute']);
-        $this->assertNull($array['custom_formatted_attribute']);
-        $this->assertNull($array['simple_attribute']);
-        $this->assertNull($array['simple_formatted_attribute']);
+        $this->assertSame($values['json']['uuid'], $array['uuid'], 'uuid');
+        $this->assertSame($values['json']['boolean'], $array['boolean'], 'boolean');
+        $this->assertSame($values['json']['integer'], $array['integer'], 'integer');
+        $this->assertSame($values['json']['float'], $array['float'], 'float');
+        $this->assertSame($values['json']['decimal'], $array['decimal'], 'decimal');
+        $this->assertSame($values['json']['date'], $array['date'], 'date');
+        $this->assertSame($values['json']['datetime'], $array['datetime'], 'datetime');
+        $this->assertSame($values['json']['timestamp'], $array['timestamp'], 'timestamp');
+        $this->assertSame($values['json']['json'], $array['json'], 'json');
+        $this->assertSame($values['json']['array'], $array['array'], 'array');
+        $this->assertSame($values['json']['object'], $array['object'], 'object');
+        $this->assertSame($values['json']['collection'], $array['collection'], 'collection');
+        $this->assertSame($values['json']['text'], $array['text'], 'text');
+        $this->assertSame($values['json']['no_cast'], $array['no_cast'], 'no cast');
     }
 
-    /**
-     * @expectedException \Illuminate\Database\Eloquent\JsonEncodingException
-     * @expectedExceptionMessage Unable to encode attribute [object_attribute] for model
-     *                           [JnJairo\Laravel\EloquentCast\Tests\EloquentModelCastingStub] to JSON:
-     *                           Malformed UTF-8 characters, possibly incorrectly encoded.
-     */
-    public function test_model_attribute_casting_fails_on_unencodable_data()
+    public function test_config_mode_getter() : void
     {
-        $model = new EloquentModelCastingStub;
-        $model->object_attribute = ['foo' => "b\xF8r"];
-        $obj = new stdClass;
-        $obj->foo = "b\xF8r";
-        $model->array_attribute = $obj;
-        $model->json_attribute = ['foo' => "b\xF8r"];
+        config(['eloquent-cast.mode' => 'getter']);
 
-        $model->getAttributes();
-    }
+        $values = $this->getValues();
 
-    /**
-     * @requires function \Illuminate\Database\Eloquent\Concerns\HasAttributes::fromFloat
-     */
-    public function test_model_attribute_casting_with_special_float_values()
-    {
-        $model = new EloquentModelCastingStub;
+        $model = new DummyModel($values['db']);
+        $model->syncOriginal();
 
-        $model->float_attribute = 0;
-        $this->assertSame(0.0, $model->float_attribute);
-
-        $model->float_attribute = 'Infinity';
-        $this->assertSame(INF, $model->float_attribute);
-
-        $model->float_attribute = INF;
-        $this->assertSame(INF, $model->float_attribute);
-
-        $model->float_attribute = '-Infinity';
-        $this->assertSame(-INF, $model->float_attribute);
-
-        $model->float_attribute = -INF;
-        $this->assertSame(-INF, $model->float_attribute);
-
-        $model->float_attribute = 'NaN';
-        $this->assertNan($model->float_attribute);
-
-        $model->float_attribute = NAN;
-        $this->assertNan($model->float_attribute);
-    }
-
-    public function test_model_get_attribute()
-    {
-        $model = new EloquentModelCastingStub;
-        $model->setDateFormat('Y-m-d H:i:s');
-        $model->int_attribute = '3';
-        $model->float_attribute = '4.0';
-        $model->string_attribute = 2.5;
-        $model->bool_attribute = 1;
-        $model->boolean_attribute = 0;
-        $model->object_attribute = ['foo' => 'bar'];
-        $obj = new stdClass;
-        $obj->foo = 'bar';
-        $model->array_attribute = $obj;
-        $model->json_attribute = ['foo' => 'bar'];
-        $model->date_attribute = '1969-07-20';
-        $model->datetime_attribute = '1969-07-20 22:56:00';
-        $model->timestamp_attribute = '1969-07-20 22:56:00';
-        $model->custom_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->custom_formatted_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->simple_attribute = 'foo_bar';
-        $model->simple_formatted_attribute = 'foo_bar';
-        $model->mutated_attribute = 'foo_bar';
-        $model->mutated_array_attribute = ['foo' => 'bar'];
-        $model->withoutCastAttribute = 123;
-
-        $this->assertSame(3, $model->getAttribute('int_attribute'));
-        $this->assertSame(4.0, $model->getAttribute('float_attribute'));
-        $this->assertSame('2.5', $model->getAttribute('string_attribute'));
-        $this->assertTrue($model->getAttribute('bool_attribute'));
-        $this->assertFalse($model->getAttribute('boolean_attribute'));
-        $this->assertEquals($obj, $model->getAttribute('object_attribute'));
-        $this->assertSame(['foo' => 'bar'], $model->getAttribute('array_attribute'));
-        $this->assertSame(['foo' => 'bar'], $model->getAttribute('json_attribute'));
-        $this->assertInstanceOf(Carbon::class, $model->getAttribute('date_attribute'));
-        $this->assertInstanceOf(Carbon::class, $model->getAttribute('datetime_attribute'));
-        $this->assertSame('1969-07-20', $model->getAttribute('date_attribute')->toDateString());
-        $this->assertSame('1969-07-20 22:56:00', $model->getAttribute('datetime_attribute')->toDateTimeString());
-        $this->assertSame(-14173440, $model->getAttribute('timestamp_attribute'));
-        $this->assertInstanceOf(CustomType::class, $model->getAttribute('custom_attribute'));
-        $this->assertSame('fooBar', $model->getAttribute('custom_attribute')->foo);
-        $this->assertSame(123, $model->getAttribute('custom_attribute')->bar);
-        $this->assertInstanceOf(CustomType::class, $model->getAttribute('custom_formatted_attribute'));
-        $this->assertSame('FooBar', $model->getAttribute('custom_formatted_attribute')->foo);
-        $this->assertSame(123, $model->getAttribute('custom_formatted_attribute')->bar);
-        $this->assertSame('fooBar', $model->getAttribute('simple_attribute'));
-        $this->assertSame('FooBar', $model->getAttribute('simple_formatted_attribute'));
-        $this->assertSame('FooBar', $model->getAttribute('mutated_attribute'));
-        $this->assertInstanceOf(Arrayable::class, $model->getAttribute('mutated_array_attribute'));
-        $this->assertSame(['foo' => 'bar'], $model->getAttribute('mutated_array_attribute')->toArray());
-        $this->assertSame(123, $model->getAttribute('withoutCastAttribute'));
-        $this->assertNull($model->getAttribute('invalidAttribute'));
-        $this->assertNull($model->getAttribute(null));
-    }
-
-    public function test_model_get_raw_attribute()
-    {
-        $model = new EloquentModelCastingStub;
-        $model->setDateFormat('Y-m-d H:i:s');
-        $model->int_attribute = '3';
-        $model->float_attribute = '4.0';
-        $model->string_attribute = 2.5;
-        $model->bool_attribute = 1;
-        $model->boolean_attribute = 0;
-        $model->object_attribute = ['foo' => 'bar'];
-        $obj = new stdClass;
-        $obj->foo = 'bar';
-        $model->array_attribute = $obj;
-        $model->json_attribute = ['foo' => 'bar'];
-        $model->date_attribute = '1969-07-20';
-        $model->datetime_attribute = '1969-07-20 22:56:00';
-        $model->timestamp_attribute = '1969-07-20 22:56:00';
-        $model->custom_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->custom_formatted_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->simple_attribute = 'foo_bar';
-        $model->simple_formatted_attribute = 'foo_bar';
-        $model->mutated_attribute = 'foo_bar';
-        $model->mutated_array_attribute = ['foo' => 'bar'];
-        $model->withoutCastAttribute = 123;
-
-        $this->assertSame('3', $model->getRawAttribute('int_attribute'));
-        $this->assertSame('4.0', $model->getRawAttribute('float_attribute'));
-        $this->assertSame(2.5, $model->getRawAttribute('string_attribute'));
-        $this->assertSame(1, $model->getRawAttribute('bool_attribute'));
-        $this->assertSame(0, $model->getRawAttribute('boolean_attribute'));
-        $this->assertEquals('{"foo":"bar"}', $model->getRawAttribute('object_attribute'));
-        $this->assertSame('{"foo":"bar"}', $model->getRawAttribute('array_attribute'));
-        $this->assertSame('{"foo":"bar"}', $model->getRawAttribute('json_attribute'));
-        $this->assertSame('1969-07-20 00:00:00', $model->getRawAttribute('date_attribute'));
-        $this->assertSame('1969-07-20 22:56:00', $model->getRawAttribute('datetime_attribute'));
-        $this->assertSame('1969-07-20 22:56:00', $model->getRawAttribute('timestamp_attribute'));
-        $this->assertSame('{"foo":"foo_bar","bar":123}', $model->getRawAttribute('custom_attribute'));
-        $this->assertSame('{"foo":"foo_bar","bar":123}', $model->getRawAttribute('custom_formatted_attribute'));
-        $this->assertSame('foo_bar', $model->getRawAttribute('simple_attribute'));
-        $this->assertSame('foo_bar', $model->getRawAttribute('simple_formatted_attribute'));
-        $this->assertSame('foo_bar', $model->getRawAttribute('mutated_attribute'));
-        $this->assertSame('{"foo":"bar"}', $model->getRawAttribute('mutated_array_attribute'));
-        $this->assertSame(123, $model->getRawAttribute('withoutCastAttribute'));
-        $this->assertNull($model->getRawAttribute('invalidAttribute'));
-        $this->assertNull($model->getRawAttribute(null));
-    }
-
-    public function test_model_get_serialized_attribute()
-    {
-        $model = new EloquentModelCastingStub;
-        $model->setDateFormat('Y-m-d H:i:s');
-        $model->int_attribute = '3';
-        $model->float_attribute = '4.0';
-        $model->string_attribute = 2.5;
-        $model->bool_attribute = 1;
-        $model->boolean_attribute = 0;
-        $model->object_attribute = ['foo' => 'bar'];
-        $obj = new stdClass;
-        $obj->foo = 'bar';
-        $model->array_attribute = $obj;
-        $model->json_attribute = ['foo' => 'bar'];
-        $model->date_attribute = '1969-07-20';
-        $model->datetime_attribute = '1969-07-20 22:56:00';
-        $model->timestamp_attribute = '1969-07-20 22:56:00';
-        $model->custom_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->custom_formatted_attribute = ['foo' => 'foo_bar', 'bar' => '123'];
-        $model->simple_attribute = 'foo_bar';
-        $model->simple_formatted_attribute = 'foo_bar';
-        $model->mutated_attribute = 'foo_bar';
-        $model->mutated_array_attribute = ['foo' => 'bar'];
-        $model->withoutCastAttribute = 123;
-
-        $this->assertSame(3, $model->getSerializedAttribute('int_attribute'));
-        $this->assertSame(4.0, $model->getSerializedAttribute('float_attribute'));
-        $this->assertSame('2.5', $model->getSerializedAttribute('string_attribute'));
-        $this->assertTrue($model->getSerializedAttribute('bool_attribute'));
-        $this->assertFalse($model->getSerializedAttribute('boolean_attribute'));
-        $this->assertEquals($obj, $model->getSerializedAttribute('object_attribute'));
-        $this->assertSame(['foo' => 'bar'], $model->getSerializedAttribute('array_attribute'));
-        $this->assertSame(['foo' => 'bar'], $model->getSerializedAttribute('json_attribute'));
-        $this->assertInstanceOf(Carbon::class, $model->getSerializedAttribute('date_attribute'));
-        $this->assertInstanceOf(Carbon::class, $model->getSerializedAttribute('datetime_attribute'));
-        $this->assertSame('1969-07-20', $model->getSerializedAttribute('date_attribute')->toDateString());
+        $this->assertInstanceOf(Uuid::class, $model->uuid, 'uuid class');
+        $this->assertSame($values['php']['uuid']->toString(), $model->uuid->toString(), 'uuid');
+        $this->assertSame($values['php']['boolean'], $model->boolean, 'boolean');
+        $this->assertSame($values['php']['integer'], $model->integer, 'integer');
+        $this->assertSame($values['php']['float'], $model->float, 'float');
+        $this->assertEquals($values['php']['decimal'], $model->decimal, 'decimal');
+        $this->assertInstanceOf(Carbon::class, $model->date, 'date class');
+        $this->assertSame($values['php']['date']->toDateString(), $model->date->toDateString(), 'date');
+        $this->assertInstanceOf(Carbon::class, $model->datetime, 'datetime class');
         $this->assertSame(
-            '1969-07-20 22:56:00',
-            $model->getSerializedAttribute('datetime_attribute')->toDateTimeString()
+            $values['php']['datetime']->toDateTimeString(),
+            $model->datetime->toDateTimeString(),
+            'datetime'
         );
-        $this->assertSame(-14173440, $model->getSerializedAttribute('timestamp_attribute'));
-        $this->assertSame(['foo' => 'fooBar', 'bar' => 123], $model->getSerializedAttribute('custom_attribute'));
-        $this->assertSame(
-            ['foo' => 'FooBar', 'bar' => 123],
-            $model->getSerializedAttribute('custom_formatted_attribute')
-        );
-        $this->assertSame('fooBar', $model->getSerializedAttribute('simple_attribute'));
-        $this->assertSame('FooBar', $model->getSerializedAttribute('simple_formatted_attribute'));
-        $this->assertSame('FooBar', $model->getSerializedAttribute('mutated_attribute'));
-        $this->assertSame(['foo' => 'bar'], $model->getSerializedAttribute('mutated_array_attribute'));
-        $this->assertSame(123, $model->getSerializedAttribute('withoutCastAttribute'));
-        $this->assertNull($model->getSerializedAttribute('invalidAttribute'));
-        $this->assertNull($model->getSerializedAttribute(null));
+        $this->assertIsInt($model->timestamp, 'timestamp type');
+        $this->assertSame($values['php']['timestamp'], $model->timestamp, 'timestamp');
+        $this->assertSame($values['php']['json'], $model->json, 'json');
+        $this->assertSame($values['php']['array'], $model->array, 'array');
+        $this->assertEquals($values['php']['object'], $model->object, 'object');
+        $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
+        $this->assertSame($values['php']['text'], $model->text, 'text');
+        $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
 
-        $arr = $model->toArray();
-
-        $this->assertSame(3, $arr['int_attribute']);
-        $this->assertSame(4.0, $arr['float_attribute']);
-        $this->assertSame('2.5', $arr['string_attribute']);
-        $this->assertTrue($arr['bool_attribute']);
-        $this->assertFalse($arr['boolean_attribute']);
-        $this->assertEquals($obj, $arr['object_attribute']);
-        $this->assertSame(['foo' => 'bar'], $arr['array_attribute']);
-        $this->assertSame(['foo' => 'bar'], $arr['json_attribute']);
-        $this->assertSame('1969-07-20 00:00:00', $arr['date_attribute']);
-        $this->assertSame('1969-07-20 22:56:00', $arr['datetime_attribute']);
-        $this->assertSame(-14173440, $arr['timestamp_attribute']);
-        $this->assertSame(['foo' => 'fooBar', 'bar' => 123], $arr['custom_attribute']);
-        $this->assertSame(
-            ['foo' => 'FooBar', 'bar' => 123],
-            $arr['custom_formatted_attribute']
-        );
-        $this->assertSame('fooBar', $arr['simple_attribute']);
-        $this->assertSame('FooBar', $arr['simple_formatted_attribute']);
-        $this->assertSame('FooBar', $arr['mutated_attribute']);
-        $this->assertSame(['foo' => 'bar'], $arr['mutated_array_attribute']);
-        $this->assertSame(123, $arr['withoutCastAttribute']);
-        $this->assertArrayNotHasKey('invalidAttribute', $arr);
+        $this->assertNull($model->uuid_, 'uuid');
+        $this->assertNull($model->boolean_, 'boolean');
+        $this->assertNull($model->integer_, 'integer');
+        $this->assertNull($model->float_, 'float');
+        $this->assertNull($model->decimal_, 'decimal');
+        $this->assertNull($model->date_, 'date');
+        $this->assertNull($model->datetime_, 'datetime');
+        $this->assertNull($model->timestamp_, 'timestamp');
+        $this->assertNull($model->json_, 'json');
+        $this->assertNull($model->array_, 'array');
+        $this->assertNull($model->object_, 'object');
+        $this->assertNull($model->collection_, 'collection');
+        $this->assertNull($model->text_, 'text');
     }
 
-    public function test_model_get_queueable_id()
+    public function test_config_mode_suffix() : void
     {
-        $model = new EloquentModelCastingStub;
-        $model->id = 'foo_bar';
-        $this->assertSame('fooBar', $model->getQueueableId());
+        config(['eloquent-cast.mode' => 'suffix']);
 
-        $morphPivot = new EloquentModelCastingMorphPivotStub();
-        $morphPivot->id = 'foo_bar';
-        $this->assertSame('fooBar', $morphPivot->getQueueableId());
+        $values = $this->getValues();
 
-        $morphPivot = new EloquentModelCastingMorphPivotStub();
-        $this->assertSame(':::::', $morphPivot->getQueueableId());
+        $model = new DummyModel($values['db']);
+        $model->syncOriginal();
 
-        $pivot = new EloquentModelCastingPivotStub();
-        $pivot->id = 'foo_bar';
-        $this->assertSame('fooBar', $pivot->getQueueableId());
+        $this->assertSame($values['db']['uuid'], $model->uuid, 'uuid');
+        $this->assertSame($values['db']['boolean'], $model->boolean, 'boolean');
+        $this->assertSame($values['db']['integer'], $model->integer, 'integer');
+        $this->assertSame($values['db']['float'], $model->float, 'float');
+        $this->assertSame($values['db']['decimal'], $model->decimal, 'decimal');
+        $this->assertSame($values['db']['date'], $model->date, 'date');
+        $this->assertSame($values['db']['datetime'], $model->datetime, 'datetime');
+        $this->assertSame($values['db']['timestamp'], $model->timestamp, 'timestamp');
+        $this->assertSame($values['db']['json'], $model->json, 'json');
+        $this->assertSame($values['db']['array'], $model->array, 'array');
+        $this->assertSame($values['db']['object'], $model->object, 'object');
+        $this->assertSame($values['db']['collection'], $model->collection, 'collection');
+        $this->assertSame($values['db']['text'], $model->text, 'text');
 
-        $pivot = new EloquentModelCastingPivotStub();
-        $this->assertSame(':::', $pivot->getQueueableId());
+        $this->assertInstanceOf(Uuid::class, $model->uuid_, 'uuid class');
+        $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
+        $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
+        $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
+        $this->assertSame($values['php']['float'], $model->float_, 'float');
+        $this->assertEquals($values['php']['decimal'], $model->decimal_, 'decimal');
+        $this->assertInstanceOf(Carbon::class, $model->date_, 'date class');
+        $this->assertSame($values['php']['date']->toDateString(), $model->date_->toDateString(), 'date');
+        $this->assertInstanceOf(Carbon::class, $model->datetime_, 'datetime class');
+        $this->assertSame(
+            $values['php']['datetime']->toDateTimeString(),
+            $model->datetime_->toDateTimeString(),
+            'datetime'
+        );
+        $this->assertIsInt($model->timestamp_, 'timestamp type');
+        $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
+        $this->assertSame($values['php']['json'], $model->json_, 'json');
+        $this->assertSame($values['php']['array'], $model->array_, 'array');
+        $this->assertEquals($values['php']['object'], $model->object_, 'object');
+        $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
+        $this->assertSame($values['php']['text'], $model->text_, 'text');
+    }
+
+    public function test_config_mode_suffix_only() : void
+    {
+        $values = $this->getValues();
+
+        config(['eloquent-cast.suffix_only' => array_keys($values['php'])]);
+
+        $model = new DummyModel($values['db']);
+        $model->syncOriginal();
+
+        $this->assertSame($values['db']['uuid'], $model->uuid, 'uuid');
+        $this->assertSame($values['db']['boolean'], $model->boolean, 'boolean');
+        $this->assertSame($values['db']['integer'], $model->integer, 'integer');
+        $this->assertSame($values['db']['float'], $model->float, 'float');
+        $this->assertSame($values['db']['decimal'], $model->decimal, 'decimal');
+        $this->assertSame($values['db']['date'], $model->date, 'date');
+        $this->assertSame($values['db']['datetime'], $model->datetime, 'datetime');
+        $this->assertSame($values['db']['timestamp'], $model->timestamp, 'timestamp');
+        $this->assertSame($values['db']['json'], $model->json, 'json');
+        $this->assertSame($values['db']['array'], $model->array, 'array');
+        $this->assertSame($values['db']['object'], $model->object, 'object');
+        $this->assertSame($values['db']['collection'], $model->collection, 'collection');
+        $this->assertSame($values['db']['text'], $model->text, 'text');
+        $this->assertSame($values['db']['no_cast'], $model->no_cast, 'no cast');
+
+        $this->assertInstanceOf(Uuid::class, $model->uuid_, 'uuid class');
+        $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
+        $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
+        $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
+        $this->assertSame($values['php']['float'], $model->float_, 'float');
+        $this->assertEquals($values['php']['decimal'], $model->decimal_, 'decimal');
+        $this->assertInstanceOf(Carbon::class, $model->date_, 'date class');
+        $this->assertSame($values['php']['date']->toDateString(), $model->date_->toDateString(), 'date');
+        $this->assertInstanceOf(Carbon::class, $model->datetime_, 'datetime class');
+        $this->assertSame(
+            $values['php']['datetime']->toDateTimeString(),
+            $model->datetime_->toDateTimeString(),
+            'datetime'
+        );
+        $this->assertIsInt($model->timestamp_, 'timestamp type');
+        $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
+        $this->assertSame($values['php']['json'], $model->json_, 'json');
+        $this->assertSame($values['php']['array'], $model->array_, 'array');
+        $this->assertEquals($values['php']['object'], $model->object_, 'object');
+        $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
+        $this->assertSame($values['php']['text'], $model->text_, 'text');
+    }
+
+    public function test_get_invalid_attribute() : void
+    {
+        $model = new DummyModel();
+
+        $this->assertNull($model->getAttribute(''), 'Empty attribute name');
+        $this->assertNull($model->bar, 'Method');
+    }
+
+    public function test_mutated_attribute() : void
+    {
+        $values = $this->getValues();
+        $newValues = $this->getNewValues();
+
+        $model = new DummyModel([
+            'foo' => 'foo',
+            'seen_at' => $values['db']['datetime'],
+        ]);
+        $model->syncOriginal();
+
+        $this->assertSame('foo', $model->foo, 'Get foo');
+        $this->assertInstanceOf(Carbon::class, $model->seen_at, 'Get datetime class');
+        $this->assertSame($values['db']['datetime'], $model->seen_at->toDateTimeString(), 'Get datetime');
+
+        $array = $model->toArray();
+
+        $this->assertSame('foo', $array['foo'], 'Get array foo');
+        $this->assertSame($values['db']['datetime'], $array['seen_at'], 'Get array datetime');
+
+        $model->foo = 'bar';
+        $model->seen_at = $newValues['php']['datetime'];
+
+        $this->assertSame('bar', $model->foo, 'Set foo');
+        $this->assertInstanceOf(Carbon::class, $model->seen_at, 'Set datetime class');
+        $this->assertSame($newValues['db']['datetime'], $model->seen_at->toDateTimeString(), 'Set datetime');
+
+        $array = $model->toArray();
+
+        $this->assertSame('bar', $array['foo'], 'Set array foo');
+        $this->assertSame($newValues['db']['datetime'], $array['seen_at'], 'Set array datetime');
+    }
+
+    public function test_set_json() : void
+    {
+        $values = $this->getValues();
+        $newValues = $this->getNewValues();
+
+        $model = new DummyModel($values['db']);
+        $model->syncOriginal();
+
+        $model->setAttribute('array->foo', $newValues['php']['array']['foo']);
+        $this->assertSame($newValues['php']['array'], $model->array, 'Array');
+    }
+
+    public function test_resolve_route_binding() : void
+    {
+        $values = $this->getValues();
+
+        $model = new DummyModel($values['db']);
+        $model->save();
+
+        $dummy = $model->resolveRouteBinding($values['php']['uuid']);
+
+        $this->assertInstanceOf(DummyModel::class, $dummy, 'Model class');
+        $this->assertInstanceOf(Uuid::class, $dummy->uuid, 'Key class');
+        $this->assertSame($model->uuid->toString(), $dummy->uuid->toString(), 'Same model');
     }
 }
