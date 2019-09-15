@@ -1,6 +1,6 @@
 {
     "name": "jn-jairo/laravel-eloquent-cast",
-    "description": "Custom cast for Laravel Eloquent.",
+    "description": "Cast for Laravel Eloquent.",
     "keywords": [
         "jn-jairo",
         "laravel-eloquent-cast"
