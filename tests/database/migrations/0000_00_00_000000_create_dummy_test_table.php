@@ -21,6 +21,7 @@ class CreateDummyTestTable extends Migration
             $table->decimal('decimal', 10, 2);
             $table->date('date');
             $table->datetime('datetime');
+            $table->datetime('datetime_custom', 6);
             $table->timestamp('timestamp');
             $table->json('json');
             $table->json('array');

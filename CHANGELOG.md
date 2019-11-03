@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.3...master)
+## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.4...master)
+
+## [v0.0.4 (2019-11-02)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.3...v0.0.4)
+
+### Fixed
+- Fixed format in the `$casts` property
 
 ## [v0.0.3 (2019-09-14)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.2...v0.0.3)
 

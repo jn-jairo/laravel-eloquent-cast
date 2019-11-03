@@ -53,6 +53,7 @@ class HasAttributesCastTest extends TestCase
             'decimal' => Cast::cast(123.45, 'decimal', '2'),
             'date' => Cast::cast('1969-07-20', 'date'),
             'datetime' => Cast::cast('1969-07-20 22:56:00', 'datetime'),
+            'datetime_custom' => Cast::cast('1969-07-20 22:56:00.571140+0000', 'datetime', 'Y-m-d H:i:s.uO'),
             'timestamp' => Cast::cast('1969-07-20 22:56:00', 'timestamp'),
             'json' => Cast::cast(['foo' => 'bar'], 'json'),
             'array' => Cast::cast(['foo' => 'bar'], 'array'),
@@ -70,6 +71,7 @@ class HasAttributesCastTest extends TestCase
             'decimal' => Cast::castDb($php['decimal'], 'decimal', '2'),
             'date' => Cast::castDb($php['date'], 'date'),
             'datetime' => Cast::castDb($php['datetime'], 'datetime'),
+            'datetime_custom' => Cast::castDb($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
             'timestamp' => Cast::castDb($php['timestamp'], 'timestamp'),
             'json' => Cast::castDb($php['json'], 'json'),
             'array' => Cast::castDb($php['array'], 'array'),
@@ -87,6 +89,7 @@ class HasAttributesCastTest extends TestCase
             'decimal' => Cast::castJson($php['decimal'], 'decimal', '2'),
             'date' => Cast::castJson($php['date'], 'date'),
             'datetime' => Cast::castJson($php['datetime'], 'datetime'),
+            'datetime_custom' => Cast::castJson($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
             'timestamp' => Cast::castJson($php['timestamp'], 'timestamp'),
             'json' => Cast::castJson($php['json'], 'json'),
             'array' => Cast::castJson($php['array'], 'array'),
@@ -113,6 +116,7 @@ class HasAttributesCastTest extends TestCase
             'decimal' => Cast::cast(1234.56, 'decimal', '2'),
             'date' => Cast::cast('1969-07-21', 'date'),
             'datetime' => Cast::cast('1969-07-21 22:56:01', 'datetime'),
+            'datetime_custom' => Cast::cast('1969-07-20 22:56:01.571141+0000', 'datetime', 'Y-m-d H:i:s.uO'),
             'timestamp' => Cast::cast('1969-07-21 22:56:01', 'timestamp'),
             'json' => Cast::cast(['foo' => 'baz'], 'json'),
             'array' => Cast::cast(['foo' => 'baz'], 'array'),
@@ -132,6 +136,7 @@ class HasAttributesCastTest extends TestCase
             'decimal' => Cast::castDb($php['decimal'], 'decimal', '2'),
             'date' => Cast::castDb($php['date'], 'date'),
             'datetime' => Cast::castDb($php['datetime'], 'datetime'),
+            'datetime_custom' => Cast::castDb($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
             'timestamp' => Cast::castDb($php['timestamp'], 'timestamp'),
             'json' => Cast::castDb($php['json'], 'json'),
             'array' => Cast::castDb($php['array'], 'array'),
@@ -151,6 +156,7 @@ class HasAttributesCastTest extends TestCase
             'decimal' => Cast::castJson($php['decimal'], 'decimal', '2'),
             'date' => Cast::castJson($php['date'], 'date'),
             'datetime' => Cast::castJson($php['datetime'], 'datetime'),
+            'datetime_custom' => Cast::castJson($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
             'timestamp' => Cast::castJson($php['timestamp'], 'timestamp'),
             'json' => Cast::castJson($php['json'], 'json'),
             'array' => Cast::castJson($php['array'], 'array'),
@@ -229,6 +235,8 @@ class HasAttributesCastTest extends TestCase
             $model->datetime->toDateTimeString(),
             'datetime'
         );
+        $this->assertInstanceOf(Carbon::class, $model->datetime_custom, 'datetime custom class');
+        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom), 'datetime custom');
         $this->assertIsInt($model->timestamp, 'timestamp type');
         $this->assertSame($values['php']['timestamp'], $model->timestamp, 'timestamp');
         $this->assertSame($values['php']['json'], $model->json, 'json');
@@ -260,6 +268,8 @@ class HasAttributesCastTest extends TestCase
             $model->datetime_->toDateTimeString(),
             'datetime'
         );
+        $this->assertInstanceOf(Carbon::class, $model->datetime_custom_, 'datetime custom class');
+        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom_), 'datetime custom');
         $this->assertIsInt($model->timestamp_, 'timestamp type');
         $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
         $this->assertSame($values['php']['json'], $model->json_, 'json');
@@ -285,6 +295,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['json']['decimal'], $array['decimal'], 'decimal');
         $this->assertSame($values['json']['date'], $array['date'], 'date');
         $this->assertSame($values['json']['datetime'], $array['datetime'], 'datetime');
+        $this->assertSame($values['json']['datetime_custom'], $array['datetime_custom'], 'datetime custom');
         $this->assertSame($values['json']['timestamp'], $array['timestamp'], 'timestamp');
         $this->assertSame($values['json']['json'], $array['json'], 'json');
         $this->assertSame($values['json']['array'], $array['array'], 'array');
@@ -317,6 +328,8 @@ class HasAttributesCastTest extends TestCase
             $model->datetime->toDateTimeString(),
             'datetime'
         );
+        $this->assertInstanceOf(Carbon::class, $model->datetime_custom, 'datetime custom class');
+        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom), 'datetime custom');
         $this->assertIsInt($model->timestamp, 'timestamp type');
         $this->assertSame($values['php']['timestamp'], $model->timestamp, 'timestamp');
         $this->assertSame($values['php']['json'], $model->json, 'json');
@@ -333,6 +346,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertNull($model->decimal_, 'decimal');
         $this->assertNull($model->date_, 'date');
         $this->assertNull($model->datetime_, 'datetime');
+        $this->assertNull($model->datetime_custom_, 'datetime');
         $this->assertNull($model->timestamp_, 'timestamp');
         $this->assertNull($model->json_, 'json');
         $this->assertNull($model->array_, 'array');
@@ -357,6 +371,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['decimal'], $model->decimal, 'decimal');
         $this->assertSame($values['db']['date'], $model->date, 'date');
         $this->assertSame($values['db']['datetime'], $model->datetime, 'datetime');
+        $this->assertSame($values['db']['datetime_custom'], $model->datetime_custom, 'datetime custom');
         $this->assertSame($values['db']['timestamp'], $model->timestamp, 'timestamp');
         $this->assertSame($values['db']['json'], $model->json, 'json');
         $this->assertSame($values['db']['array'], $model->array, 'array');
@@ -378,6 +393,8 @@ class HasAttributesCastTest extends TestCase
             $model->datetime_->toDateTimeString(),
             'datetime'
         );
+        $this->assertInstanceOf(Carbon::class, $model->datetime_custom_, 'datetime custom class');
+        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom_), 'datetime custom');
         $this->assertIsInt($model->timestamp_, 'timestamp type');
         $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
         $this->assertSame($values['php']['json'], $model->json_, 'json');
@@ -403,6 +420,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['decimal'], $model->decimal, 'decimal');
         $this->assertSame($values['db']['date'], $model->date, 'date');
         $this->assertSame($values['db']['datetime'], $model->datetime, 'datetime');
+        $this->assertSame($values['db']['datetime_custom'], $model->datetime_custom, 'datetime custom');
         $this->assertSame($values['db']['timestamp'], $model->timestamp, 'timestamp');
         $this->assertSame($values['db']['json'], $model->json, 'json');
         $this->assertSame($values['db']['array'], $model->array, 'array');
@@ -425,6 +443,8 @@ class HasAttributesCastTest extends TestCase
             $model->datetime_->toDateTimeString(),
             'datetime'
         );
+        $this->assertInstanceOf(Carbon::class, $model->datetime_custom_, 'datetime custom class');
+        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom_), 'datetime custom');
         $this->assertIsInt($model->timestamp_, 'timestamp type');
         $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
         $this->assertSame($values['php']['json'], $model->json_, 'json');

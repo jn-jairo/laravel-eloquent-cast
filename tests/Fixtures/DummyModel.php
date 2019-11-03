@@ -29,6 +29,7 @@ class DummyModel extends Model
         'decimal' => 'decimal:2',
         'date' => 'date',
         'datetime' => 'datetime',
+        'datetime_custom' => 'datetime:Y-m-d H:i:s.uO',
         'timestamp' => 'timestamp',
         'json' => 'json',
         'array' => 'array',

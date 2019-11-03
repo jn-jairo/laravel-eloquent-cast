@@ -42,7 +42,7 @@ trait HasAttributesCast
             $typeFormat = explode(':', $casts[$key], 2);
 
             if (isset($typeFormat[1])) {
-                $type = $typeFormat[1];
+                $format = $typeFormat[1];
             }
         }
 
