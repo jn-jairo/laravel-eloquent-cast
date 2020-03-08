@@ -8,9 +8,13 @@
 This package extends the built-in [attribute casting](https://laravel.com/docs/eloquent-mutators#attribute-casting)
 with the [jn-jairo/laravel-cast](https://github.com/jn-jairo/laravel-cast) package.
 
-## Requirements
+## Version Compatibility
 
-- Laravel Framework >= 5.8
+ Laravel  | Eloquent Cast
+:---------|:----------
+ 5.8.x    | 1.x
+ 6.x      | 1.x
+ 7.x      | 2.x
 
 ## Installation
 

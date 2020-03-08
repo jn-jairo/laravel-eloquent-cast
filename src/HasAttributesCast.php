@@ -2,6 +2,7 @@
 
 namespace JnJairo\Laravel\EloquentCast;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use JnJairo\Laravel\Cast\Facades\Cast;
 
@@ -114,29 +115,29 @@ trait HasAttributesCast
      * Determine if the new and old values for a given key are equivalent.
      *
      * @param string $key
-     * @param mixed $current
      * @return bool
      */
-    public function originalIsEquivalent($key, $current) : bool
+    public function originalIsEquivalent($key) : bool
     {
         if (! array_key_exists($key, $this->original)) {
             return false;
         }
 
-        $original = $this->getOriginal($key);
+        $attribute = Arr::get($this->attributes, $key);
+        $original = Arr::get($this->original, $key);
 
-        if ($current === $original) {
+        if ($attribute === $original) {
             return true;
-        } elseif (is_null($current)) {
+        } elseif (is_null($attribute)) {
             return false;
-        } elseif ($this->hasCast($key)) {
-            return $this->castAttribute($key, $current) === $this->castAttribute($key, $original)
-                || $this->castDbAttribute($key, $current) === $this->castDbAttribute($key, $original)
-                || $this->castJsonAttribute($key, $current) === $this->castJsonAttribute($key, $original);
+        } elseif ($this->hasCast($key) && ! $this->isClassCastable($key)) {
+            return $this->castAttribute($key, $attribute) === $this->castAttribute($key, $original)
+                || $this->castDbAttribute($key, $attribute) === $this->castDbAttribute($key, $original)
+                || $this->castJsonAttribute($key, $attribute) === $this->castJsonAttribute($key, $original);
         }
 
-        return is_numeric($current) && is_numeric($original)
-                && strcmp((string) $current, (string) $original) === 0;
+        return is_numeric($attribute) && is_numeric($original)
+                && strcmp((string) $attribute, (string) $original) === 0;
     }
 
     /**
@@ -153,7 +154,11 @@ trait HasAttributesCast
                 continue;
             }
 
-            $attributes[$key] = $this->castJsonAttribute($key, $attributes[$key]);
+            if ($this->isClassCastable($key)) {
+                $attributes[$key] = $this->getClassCastableAttributeValue($key);
+            } else {
+                $attributes[$key] = $this->castJsonAttribute($key, $attributes[$key]);
+            }
         }
 
         return $attributes;
@@ -191,8 +196,9 @@ trait HasAttributesCast
             return;
         }
 
-        if (array_key_exists($key, $this->attributes) ||
-            $this->hasGetMutator($key)) {
+        if (array_key_exists($key, $this->getAttributes()) ||
+            $this->hasGetMutator($key) ||
+            $this->isClassCastable($key)) {
             return $this->getAttributeValue($key);
         }
 
@@ -225,6 +231,10 @@ trait HasAttributesCast
             return $this->mutateAttribute($key, $value);
         }
 
+        if ($this->isClassCastable($key)) {
+            return $this->getClassCastableAttributeValue($key);
+        }
+
         if ($this->hasCast($keyBase)) {
             return $this->castAttribute($key, $value);
         }
@@ -248,6 +258,9 @@ trait HasAttributesCast
     {
         if ($this->hasSetMutator($key)) {
             return $this->setMutatedAttributeValue($key, $value);
+        } elseif ($this->isClassCastable($key)) {
+            $this->setClassCastableAttribute($key, $value);
+            return $this;
         } elseif ($this->hasCast($key)) {
             $value = $this->castDbAttribute($key, $value);
         }
@@ -265,11 +278,12 @@ trait HasAttributesCast
      * Retrieve the model for a bound value.
      *
      * @param mixed $value
+     * @param string|null $field
      * @return \Illuminate\Database\Eloquent\Model|null
      */
-    public function resolveRouteBinding($value)
+    public function resolveRouteBinding($value, $field = null)
     {
-        $value = $this->castDbAttribute($this->getRouteKeyName(), $value);
-        return $this->where($this->getRouteKeyName(), $value)->first();
+        $value = $this->castDbAttribute($field ?? $this->getRouteKeyName(), $value);
+        return $this->where($field ?? $this->getRouteKeyName(), $value)->first();
     }
 }

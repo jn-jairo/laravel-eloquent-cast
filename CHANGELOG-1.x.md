@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v1.0.0...master)
+## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v1.0.0...1.x)
 
 ## [v1.0.0 (2019-12-26)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v0.0.5...v1.0.0)
 

@@ -60,6 +60,7 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::cast(['foo' => 'bar'], 'object'),
             'collection' => Cast::cast(['foo' => 'bar'], 'collection'),
             'text' => Cast::cast(123, 'text'),
+            'class_cast' => 'FooBar',
             'no_cast' => '1',
         ];
 
@@ -78,6 +79,7 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::castDb($php['object'], 'object'),
             'collection' => Cast::castDb($php['collection'], 'collection'),
             'text' => Cast::castDb($php['text'], 'text'),
+            'class_cast' => 'foo_bar',
             'no_cast' => $php['no_cast'],
         ];
 
@@ -96,6 +98,7 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::castJson($php['object'], 'object'),
             'collection' => Cast::castJson($php['collection'], 'collection'),
             'text' => Cast::castJson($php['text'], 'text'),
+            'class_cast' => 'FooBar',
             'no_cast' => $php['no_cast'],
         ];
 
@@ -123,6 +126,7 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::cast(['foo' => 'baz'], 'object'),
             'collection' => Cast::cast(['foo' => 'baz'], 'collection'),
             'text' => Cast::cast(1234, 'text'),
+            'class_cast' => 'BarFoo',
             'no_cast' => '2',
             'not_exists' => 'foo',
             'foo' => 'foo',
@@ -143,6 +147,7 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::castDb($php['object'], 'object'),
             'collection' => Cast::castDb($php['collection'], 'collection'),
             'text' => Cast::castDb($php['text'], 'text'),
+            'class_cast' => 'bar_foo',
             'no_cast' => $php['no_cast'],
             'not_exists' => $php['not_exists'],
             'foo' => $php['foo'],
@@ -163,6 +168,7 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::castJson($php['object'], 'object'),
             'collection' => Cast::castJson($php['collection'], 'collection'),
             'text' => Cast::castJson($php['text'], 'text'),
+            'class_cast' => 'BarFoo',
             'no_cast' => $php['no_cast'],
             'not_exists' => $php['not_exists'],
             'foo' => $php['foo'],
@@ -244,6 +250,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['object'], $model->object, 'object');
         $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
         $this->assertSame($values['php']['text'], $model->text, 'text');
+        $this->assertSame($values['php']['class_cast'], $model->class_cast, 'class cast');
         $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
     }
 
@@ -302,6 +309,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['json']['object'], $array['object'], 'object');
         $this->assertSame($values['json']['collection'], $array['collection'], 'collection');
         $this->assertSame($values['json']['text'], $array['text'], 'text');
+        $this->assertSame($values['json']['class_cast'], $array['class_cast'], 'class cast');
         $this->assertSame($values['json']['no_cast'], $array['no_cast'], 'no cast');
     }
 
@@ -337,6 +345,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['object'], $model->object, 'object');
         $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
         $this->assertSame($values['php']['text'], $model->text, 'text');
+        $this->assertSame($values['php']['class_cast'], $model->class_cast, 'class cast');
         $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
 
         $this->assertNull($model->uuid_, 'uuid');
@@ -480,7 +489,7 @@ class HasAttributesCastTest extends TestCase
         $array = $model->toArray();
 
         $this->assertSame('foo', $array['foo'], 'Get array foo');
-        $this->assertSame($values['db']['datetime'], $array['seen_at'], 'Get array datetime');
+        $this->assertSame(Carbon::parse($values['db']['datetime'])->toJSON(), $array['seen_at'], 'Get array datetime');
 
         $model->foo = 'bar';
         $model->seen_at = $newValues['php']['datetime'];
@@ -492,7 +501,7 @@ class HasAttributesCastTest extends TestCase
         $array = $model->toArray();
 
         $this->assertSame('bar', $array['foo'], 'Set array foo');
-        $this->assertSame($newValues['db']['datetime'], $array['seen_at'], 'Set array datetime');
+        $this->assertSame(Carbon::parse($newValues['db']['datetime'])->toJSON(), $array['seen_at'], 'Set array datetime');
     }
 
     public function test_set_json() : void
