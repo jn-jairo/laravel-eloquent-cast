@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.0...2.x)
+## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.1...2.x)
+
+## [v2.0.1 (2020-08-12)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.0...v2.0.1)
+
+### Added
+- Travis PHP 7.4
 
 ### Fixed
 - Fixed class cast
