@@ -155,7 +155,7 @@ trait HasAttributesCast
             }
 
             if ($this->isClassCastable($key)) {
-                $attributes[$key] = $this->getClassCastableAttributeValue($key);
+                $attributes[$key] = $this->getClassCastableAttributeValue($key, $attributes[$key]);
             } else {
                 $attributes[$key] = $this->castJsonAttribute($key, $attributes[$key]);
             }
@@ -232,7 +232,7 @@ trait HasAttributesCast
         }
 
         if ($this->isClassCastable($key)) {
-            return $this->getClassCastableAttributeValue($key);
+            return $this->getClassCastableAttributeValue($key, $value);
         }
 
         if ($this->hasCast($keyBase)) {
