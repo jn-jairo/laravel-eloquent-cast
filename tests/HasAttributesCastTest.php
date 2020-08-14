@@ -6,7 +6,7 @@ use Illuminate\Support\Carbon;
 use JnJairo\Laravel\Cast\Facades\Cast;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\DummyModel;
 use JnJairo\Laravel\EloquentCast\Tests\OrchestraTestCase as TestCase;
-use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\UuidInterface;
 
 /**
  * @testdox Has attributes cast
@@ -227,7 +227,7 @@ class HasAttributesCastTest extends TestCase
         $model = new DummyModel($values['db']);
         $model->syncOriginal();
 
-        $this->assertInstanceOf(Uuid::class, $model->uuid, 'uuid class');
+        $this->assertInstanceOf(UuidInterface::class, $model->uuid, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid->toString(), 'uuid');
         $this->assertSame($values['php']['boolean'], $model->boolean, 'boolean');
         $this->assertSame($values['php']['integer'], $model->integer, 'integer');
@@ -261,7 +261,7 @@ class HasAttributesCastTest extends TestCase
         $model = new DummyModel($values['db']);
         $model->syncOriginal();
 
-        $this->assertInstanceOf(Uuid::class, $model->uuid_, 'uuid class');
+        $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
         $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
         $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
@@ -322,7 +322,7 @@ class HasAttributesCastTest extends TestCase
         $model = new DummyModel($values['db']);
         $model->syncOriginal();
 
-        $this->assertInstanceOf(Uuid::class, $model->uuid, 'uuid class');
+        $this->assertInstanceOf(UuidInterface::class, $model->uuid, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid->toString(), 'uuid');
         $this->assertSame($values['php']['boolean'], $model->boolean, 'boolean');
         $this->assertSame($values['php']['integer'], $model->integer, 'integer');
@@ -388,7 +388,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['collection'], $model->collection, 'collection');
         $this->assertSame($values['db']['text'], $model->text, 'text');
 
-        $this->assertInstanceOf(Uuid::class, $model->uuid_, 'uuid class');
+        $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
         $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
         $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
@@ -438,7 +438,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['text'], $model->text, 'text');
         $this->assertSame($values['db']['no_cast'], $model->no_cast, 'no cast');
 
-        $this->assertInstanceOf(Uuid::class, $model->uuid_, 'uuid class');
+        $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
         $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
         $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
@@ -526,7 +526,7 @@ class HasAttributesCastTest extends TestCase
         $dummy = $model->resolveRouteBinding($values['php']['uuid']);
 
         $this->assertInstanceOf(DummyModel::class, $dummy, 'Model class');
-        $this->assertInstanceOf(Uuid::class, $dummy->uuid, 'Key class');
+        $this->assertInstanceOf(UuidInterface::class, $dummy->uuid, 'Key class');
         $this->assertSame($model->uuid->toString(), $dummy->uuid->toString(), 'Same model');
     }
 }
