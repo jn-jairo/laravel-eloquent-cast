@@ -15,6 +15,7 @@ with the [jn-jairo/laravel-cast](https://github.com/jn-jairo/laravel-cast) packa
  5.8.x    | 1.x
  6.x      | 1.x
  7.x      | 2.x
+ 8.x      | 2.x
 
 ## Installation
 
