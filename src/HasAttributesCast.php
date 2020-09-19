@@ -275,6 +275,31 @@ trait HasAttributesCast
     }
 
     /**
+     * Determine if the given key is cast using a custom class.
+     *
+     * @param string $key
+     * @return bool
+     */
+    protected function isClassCastable($key)
+    {
+        if (! array_key_exists($key, $this->getCasts())) {
+            return false;
+        }
+
+        $castType = $this->parseCasterClass($this->getCasts()[$key]);
+
+        if (in_array($castType, static::$primitiveCastTypes)) {
+            return false;
+        }
+
+        if (class_exists($castType)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Retrieve the model for a bound value.
      *
      * @param mixed $value
