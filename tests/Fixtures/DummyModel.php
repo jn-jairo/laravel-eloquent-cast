@@ -37,6 +37,7 @@ class DummyModel extends Model
         'collection' => 'collection',
         'text' => 'text',
         'class_cast' => DummyCast::class,
+        'encrypted' => 'encrypted',
     ];
 
     protected $dates = [

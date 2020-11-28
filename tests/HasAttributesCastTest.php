@@ -2,7 +2,10 @@
 
 namespace JnJairo\Laravel\EloquentCast\Tests;
 
+use Illuminate\Database\Eloquent\Concerns\HasAttributes;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use JnJairo\Laravel\Cast\Facades\Cast;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\DummyModel;
 use JnJairo\Laravel\EloquentCast\Tests\OrchestraTestCase as TestCase;
@@ -28,6 +31,12 @@ class HasAttributesCastTest extends TestCase
             'database' => ':memory:',
             'prefix'   => '',
         ]);
+
+        // Setup encrypter
+        $app['config']->set('app.key', 'base64:' . base64_encode(
+            Encrypter::generateKey('AES-256-CBC')
+        ));
+        $app['config']->set('app.cipher', 'AES-256-CBC');
     }
 
     public function setUp() : void
@@ -61,6 +70,7 @@ class HasAttributesCastTest extends TestCase
             'collection' => Cast::cast(['foo' => 'bar'], 'collection'),
             'text' => Cast::cast(123, 'text'),
             'class_cast' => 'FooBar',
+            'encrypted' => 'FooBar',
             'no_cast' => '1',
         ];
 
@@ -80,6 +90,7 @@ class HasAttributesCastTest extends TestCase
             'collection' => Cast::castDb($php['collection'], 'collection'),
             'text' => Cast::castDb($php['text'], 'text'),
             'class_cast' => 'foo_bar',
+            'encrypted' => Crypt::encrypt('FooBar', false),
             'no_cast' => $php['no_cast'],
         ];
 
@@ -98,9 +109,14 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::castJson($php['object'], 'object'),
             'collection' => Cast::castJson($php['collection'], 'collection'),
             'text' => Cast::castJson($php['text'], 'text'),
-            'class_cast' => 'FooBar',
+            'class_cast' => 'foo-bar',
+            'encrypted' => 'FooBar',
             'no_cast' => $php['no_cast'],
         ];
+
+        if (! method_exists(HasAttributes::class, 'serializeClassCastableAttribute')) {
+            $json['class_cast'] = 'foo_bar';
+        }
 
         return [
             'php' => $php,
@@ -127,6 +143,7 @@ class HasAttributesCastTest extends TestCase
             'collection' => Cast::cast(['foo' => 'baz'], 'collection'),
             'text' => Cast::cast(1234, 'text'),
             'class_cast' => 'BarFoo',
+            'encrypted' => 'BarFoo',
             'no_cast' => '2',
             'not_exists' => 'foo',
             'foo' => 'foo',
@@ -148,6 +165,7 @@ class HasAttributesCastTest extends TestCase
             'collection' => Cast::castDb($php['collection'], 'collection'),
             'text' => Cast::castDb($php['text'], 'text'),
             'class_cast' => 'bar_foo',
+            'encrypted' => Crypt::encrypt('BarFoo', false),
             'no_cast' => $php['no_cast'],
             'not_exists' => $php['not_exists'],
             'foo' => $php['foo'],
@@ -168,11 +186,16 @@ class HasAttributesCastTest extends TestCase
             'object' => Cast::castJson($php['object'], 'object'),
             'collection' => Cast::castJson($php['collection'], 'collection'),
             'text' => Cast::castJson($php['text'], 'text'),
-            'class_cast' => 'BarFoo',
+            'class_cast' => 'bar-foo',
+            'encrypted' => 'BarFoo',
             'no_cast' => $php['no_cast'],
             'not_exists' => $php['not_exists'],
             'foo' => $php['foo'],
         ];
+
+        if (! method_exists(HasAttributes::class, 'serializeClassCastableAttribute')) {
+            $json['class_cast'] = 'bar_foo';
+        }
 
         return [
             'php' => $php,
@@ -251,6 +274,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
         $this->assertSame($values['php']['text'], $model->text, 'text');
         $this->assertSame($values['php']['class_cast'], $model->class_cast, 'class cast');
+        $this->assertSame($values['php']['encrypted'], $model->encrypted, 'encrypted');
         $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
     }
 
@@ -284,6 +308,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['object'], $model->object_, 'object');
         $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
         $this->assertSame($values['php']['text'], $model->text_, 'text');
+        $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
     }
 
     public function test_get_attribute_array() : void
@@ -310,6 +335,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['json']['collection'], $array['collection'], 'collection');
         $this->assertSame($values['json']['text'], $array['text'], 'text');
         $this->assertSame($values['json']['class_cast'], $array['class_cast'], 'class cast');
+        $this->assertSame($values['json']['encrypted'], $array['encrypted'], 'encrypted');
         $this->assertSame($values['json']['no_cast'], $array['no_cast'], 'no cast');
     }
 
@@ -346,6 +372,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
         $this->assertSame($values['php']['text'], $model->text, 'text');
         $this->assertSame($values['php']['class_cast'], $model->class_cast, 'class cast');
+        $this->assertSame($values['php']['encrypted'], $model->encrypted, 'encrypted');
         $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
 
         $this->assertNull($model->uuid_, 'uuid');
@@ -362,6 +389,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertNull($model->object_, 'object');
         $this->assertNull($model->collection_, 'collection');
         $this->assertNull($model->text_, 'text');
+        $this->assertNull($model->encrypted_, 'encrypted');
     }
 
     public function test_config_mode_suffix() : void
@@ -387,6 +415,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['object'], $model->object, 'object');
         $this->assertSame($values['db']['collection'], $model->collection, 'collection');
         $this->assertSame($values['db']['text'], $model->text, 'text');
+        $this->assertSame(Crypt::decrypt($values['db']['encrypted'], false), Crypt::decrypt($model->encrypted, false), 'encrypted');
 
         $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
@@ -411,6 +440,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['object'], $model->object_, 'object');
         $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
         $this->assertSame($values['php']['text'], $model->text_, 'text');
+        $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
     }
 
     public function test_config_mode_suffix_only() : void
@@ -437,6 +467,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['collection'], $model->collection, 'collection');
         $this->assertSame($values['db']['text'], $model->text, 'text');
         $this->assertSame($values['db']['no_cast'], $model->no_cast, 'no cast');
+        $this->assertSame(Crypt::decrypt($values['db']['encrypted'], false), Crypt::decrypt($model->encrypted, false), 'encrypted');
 
         $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
@@ -461,6 +492,7 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['object'], $model->object_, 'object');
         $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
         $this->assertSame($values['php']['text'], $model->text_, 'text');
+        $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
     }
 
     public function test_get_invalid_attribute() : void

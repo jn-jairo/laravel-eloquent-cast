@@ -29,6 +29,7 @@ class CreateDummyTestTable extends Migration
             $table->json('collection');
             $table->text('text');
             $table->text('class_cast');
+            $table->text('encrypted');
             $table->text('no_cast');
         });
     }

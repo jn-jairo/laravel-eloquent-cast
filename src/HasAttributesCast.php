@@ -155,7 +155,11 @@ trait HasAttributesCast
             }
 
             if ($this->isClassCastable($key)) {
-                $attributes[$key] = $this->getClassCastableAttributeValue($key, $attributes[$key]);
+                if (method_exists($this, 'serializeClassCastableAttribute')) {
+                    if ($this->isClassSerializable($key)) {
+                        $attributes[$key] = $this->serializeClassCastableAttribute($key, $attributes[$key]);
+                    }
+                }
             } else {
                 $attributes[$key] = $this->castJsonAttribute($key, $attributes[$key]);
             }
