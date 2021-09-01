@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.3...2.x)
+## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.4...2.x)
+
+## [v2.0.4 (2021-09-01)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.3...v2.0.4)
+
+### Added
+- PHP 8 support
 
 ## [v2.0.3 (2020-11-27)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.2...v2.0.3)
 
