@@ -415,7 +415,11 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['object'], $model->object, 'object');
         $this->assertSame($values['db']['collection'], $model->collection, 'collection');
         $this->assertSame($values['db']['text'], $model->text, 'text');
-        $this->assertSame(Crypt::decrypt($values['db']['encrypted'], false), Crypt::decrypt($model->encrypted, false), 'encrypted');
+        $this->assertSame(
+            Crypt::decrypt($values['db']['encrypted'], false),
+            Crypt::decrypt($model->encrypted, false),
+            'encrypted'
+        );
 
         $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
@@ -467,7 +471,11 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['db']['collection'], $model->collection, 'collection');
         $this->assertSame($values['db']['text'], $model->text, 'text');
         $this->assertSame($values['db']['no_cast'], $model->no_cast, 'no cast');
-        $this->assertSame(Crypt::decrypt($values['db']['encrypted'], false), Crypt::decrypt($model->encrypted, false), 'encrypted');
+        $this->assertSame(
+            Crypt::decrypt($values['db']['encrypted'], false),
+            Crypt::decrypt($model->encrypted, false),
+            'encrypted'
+        );
 
         $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
@@ -533,7 +541,11 @@ class HasAttributesCastTest extends TestCase
         $array = $model->toArray();
 
         $this->assertSame('bar', $array['foo'], 'Set array foo');
-        $this->assertSame(Carbon::parse($newValues['db']['datetime'])->toJSON(), $array['seen_at'], 'Set array datetime');
+        $this->assertSame(
+            Carbon::parse($newValues['db']['datetime'])->toJSON(),
+            $array['seen_at'],
+            'Set array datetime'
+        );
     }
 
     public function test_set_json() : void
