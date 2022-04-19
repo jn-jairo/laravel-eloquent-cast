@@ -31,6 +31,15 @@ class CreateDummyTestTable extends Migration
             $table->text('class_cast');
             $table->text('encrypted');
             $table->text('no_cast');
+
+            if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+                $table->string('enum_string', 10);
+                $table->integer('enum_integer');
+                $table->integer('enum_arrayable');
+                $table->integer('enum_jsonable');
+                $table->string('enum_string_laravel', 10);
+                $table->integer('enum_integer_laravel');
+            }
         });
     }
 

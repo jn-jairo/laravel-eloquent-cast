@@ -4,6 +4,10 @@ namespace JnJairo\Laravel\EloquentCast\Tests\Fixtures;
 
 use Illuminate\Database\Eloquent\Model;
 use JnJairo\Laravel\EloquentCast\HasAttributesCast;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyArrayableEnum;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyIntegerEnum;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyJsonableEnum;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyStringEnum;
 
 class DummyModel extends Model
 {
@@ -36,6 +40,12 @@ class DummyModel extends Model
         'object' => 'object',
         'collection' => 'collection',
         'text' => 'text',
+        'enum_string' => 'enum:' . DummyStringEnum::class,
+        'enum_integer' => 'enum:' . DummyIntegerEnum::class,
+        'enum_arrayable' => 'enum:' . DummyArrayableEnum::class,
+        'enum_jsonable' => 'enum:' . DummyJsonableEnum::class,
+        'enum_string_laravel' => DummyStringEnum::class,
+        'enum_integer_laravel' => DummyIntegerEnum::class,
         'class_cast' => DummyCast::class,
         'encrypted' => 'encrypted',
     ];

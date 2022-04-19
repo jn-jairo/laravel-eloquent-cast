@@ -8,6 +8,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use JnJairo\Laravel\Cast\Facades\Cast;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\DummyModel;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyArrayableEnum;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyIntegerEnum;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyJsonableEnum;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyStringEnum;
 use JnJairo\Laravel\EloquentCast\Tests\OrchestraTestCase as TestCase;
 use Ramsey\Uuid\UuidInterface;
 
@@ -114,6 +118,31 @@ class HasAttributesCastTest extends TestCase
             'no_cast' => $php['no_cast'],
         ];
 
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $php['enum_string_laravel'] = $php['enum_string'] = DummyStringEnum::foo;
+            $php['enum_integer_laravel'] = $php['enum_integer'] = DummyIntegerEnum::one;
+            $php['enum_arrayable'] = DummyArrayableEnum::foo;
+            $php['enum_jsonable'] = DummyJsonableEnum::foo;
+
+            $db['enum_string_laravel'] = $db['enum_string'] = 'foo';
+            $db['enum_integer_laravel'] = $db['enum_integer'] = 1;
+            $db['enum_arrayable'] = 1;
+            $db['enum_jsonable'] = 1;
+
+            $json['enum_string_laravel'] = $json['enum_string'] = 'foo';
+            $json['enum_integer_laravel'] = $json['enum_integer'] = 1;
+            $json['enum_arrayable'] = [
+                'name' => 'foo',
+                'value' => 1,
+                'description' => 'foo description',
+            ];
+            $json['enum_jsonable'] = [
+                'name' => 'foo',
+                'value' => 1,
+                'description' => 'foo description',
+            ];
+        }
+
         if (! method_exists(HasAttributes::class, 'serializeClassCastableAttribute')) {
             $json['class_cast'] = 'foo_bar';
         }
@@ -192,6 +221,31 @@ class HasAttributesCastTest extends TestCase
             'not_exists' => $php['not_exists'],
             'foo' => $php['foo'],
         ];
+
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $php['enum_string_laravel'] = $php['enum_string'] = DummyStringEnum::bar;
+            $php['enum_integer_laravel'] = $php['enum_integer'] = DummyIntegerEnum::two;
+            $php['enum_arrayable'] = DummyArrayableEnum::bar;
+            $php['enum_jsonable'] = DummyJsonableEnum::bar;
+
+            $db['enum_string_laravel'] = $db['enum_string'] = 'bar';
+            $db['enum_integer_laravel'] = $db['enum_integer'] = 2;
+            $db['enum_arrayable'] = 2;
+            $db['enum_jsonable'] = 2;
+
+            $json['enum_string_laravel'] = $json['enum_string'] = 'bar';
+            $json['enum_integer_laravel'] = $json['enum_integer'] = 2;
+            $json['enum_arrayable'] = [
+                'name' => 'bar',
+                'value' => 2,
+                'description' => 'bar description',
+            ];
+            $json['enum_jsonable'] = [
+                'name' => 'bar',
+                'value' => 2,
+                'description' => 'bar description',
+            ];
+        }
 
         if (! method_exists(HasAttributes::class, 'serializeClassCastableAttribute')) {
             $json['class_cast'] = 'bar_foo';
@@ -276,6 +330,24 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['php']['class_cast'], $model->class_cast, 'class cast');
         $this->assertSame($values['php']['encrypted'], $model->encrypted, 'encrypted');
         $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
+
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['php']['enum_string'], $model->enum_string, 'enum string');
+            $this->assertSame($values['php']['enum_integer'], $model->enum_integer, 'enum integer');
+            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
+            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
+
+            $this->assertSame(
+                $values['php']['enum_string_laravel'],
+                $model->enum_string_laravel,
+                'enum string laravel'
+            );
+            $this->assertSame(
+                $values['php']['enum_integer_laravel'],
+                $model->enum_integer_laravel,
+                'enum integer laravel'
+            );
+        }
     }
 
     public function test_get_attribute_suffix() : void
@@ -309,6 +381,13 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
         $this->assertSame($values['php']['text'], $model->text_, 'text');
         $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
+
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['php']['enum_string'], $model->enum_string_, 'enum string');
+            $this->assertSame($values['php']['enum_integer'], $model->enum_integer_, 'enum integer');
+            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable_, 'enum arrayable');
+            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable_, 'enum jsonable');
+        }
     }
 
     public function test_get_attribute_array() : void
@@ -337,6 +416,24 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['json']['class_cast'], $array['class_cast'], 'class cast');
         $this->assertSame($values['json']['encrypted'], $array['encrypted'], 'encrypted');
         $this->assertSame($values['json']['no_cast'], $array['no_cast'], 'no cast');
+
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['json']['enum_string'], $array['enum_string'], 'enum string');
+            $this->assertSame($values['json']['enum_integer'], $array['enum_integer'], 'enum integer');
+            $this->assertSame($values['json']['enum_arrayable'], $array['enum_arrayable'], 'enum arrayable');
+            $this->assertSame($values['json']['enum_jsonable'], $array['enum_jsonable'], 'enum jsonable');
+
+            $this->assertSame(
+                $values['json']['enum_string_laravel'],
+                $array['enum_string_laravel'],
+                'enum string laravel'
+            );
+            $this->assertSame(
+                $values['json']['enum_integer_laravel'],
+                $array['enum_integer_laravel'],
+                'enum integer laravel'
+            );
+        }
     }
 
     public function test_config_mode_getter() : void
@@ -375,6 +472,24 @@ class HasAttributesCastTest extends TestCase
         $this->assertSame($values['php']['encrypted'], $model->encrypted, 'encrypted');
         $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
 
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['php']['enum_string'], $model->enum_string, 'enum string');
+            $this->assertSame($values['php']['enum_integer'], $model->enum_integer, 'enum integer');
+            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
+            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
+
+            $this->assertSame(
+                $values['php']['enum_string_laravel'],
+                $model->enum_string_laravel,
+                'enum string laravel'
+            );
+            $this->assertSame(
+                $values['php']['enum_integer_laravel'],
+                $model->enum_integer_laravel,
+                'enum integer laravel'
+            );
+        }
+
         $this->assertNull($model->uuid_, 'uuid');
         $this->assertNull($model->boolean_, 'boolean');
         $this->assertNull($model->integer_, 'integer');
@@ -390,6 +505,13 @@ class HasAttributesCastTest extends TestCase
         $this->assertNull($model->collection_, 'collection');
         $this->assertNull($model->text_, 'text');
         $this->assertNull($model->encrypted_, 'encrypted');
+
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertNull($model->enum_string_, 'enum string');
+            $this->assertNull($model->enum_integer_, 'enum integer');
+            $this->assertNull($model->enum_arrayable_, 'enum arrayable');
+            $this->assertNull($model->enum_jsonable_, 'enum jsonable');
+        }
     }
 
     public function test_config_mode_suffix() : void
@@ -421,6 +543,13 @@ class HasAttributesCastTest extends TestCase
             'encrypted'
         );
 
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['db']['enum_string'], $model->enum_string, 'enum string');
+            $this->assertSame($values['db']['enum_integer'], $model->enum_integer, 'enum integer');
+            $this->assertSame($values['db']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
+            $this->assertSame($values['db']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
+        }
+
         $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
         $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
@@ -445,6 +574,13 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
         $this->assertSame($values['php']['text'], $model->text_, 'text');
         $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
+
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['php']['enum_string'], $model->enum_string_, 'enum string');
+            $this->assertSame($values['php']['enum_integer'], $model->enum_integer_, 'enum integer');
+            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable_, 'enum arrayable');
+            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable_, 'enum jsonable');
+        }
     }
 
     public function test_config_mode_suffix_only() : void
@@ -477,6 +613,13 @@ class HasAttributesCastTest extends TestCase
             'encrypted'
         );
 
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['php']['enum_string'], $model->enum_string, 'enum string');
+            $this->assertSame($values['php']['enum_integer'], $model->enum_integer, 'enum integer');
+            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
+            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
+        }
+
         $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
         $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
         $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
@@ -501,6 +644,13 @@ class HasAttributesCastTest extends TestCase
         $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
         $this->assertSame($values['php']['text'], $model->text_, 'text');
         $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
+
+        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            $this->assertSame($values['php']['enum_string'], $model->enum_string_, 'enum string');
+            $this->assertSame($values['php']['enum_integer'], $model->enum_integer_, 'enum integer');
+            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable_, 'enum arrayable');
+            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable_, 'enum jsonable');
+        }
     }
 
     public function test_get_invalid_attribute() : void

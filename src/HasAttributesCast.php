@@ -130,7 +130,9 @@ trait HasAttributesCast
             return true;
         } elseif (is_null($attribute)) {
             return false;
-        } elseif ($this->hasCast($key) && ! $this->isClassCastable($key)) {
+        } elseif ($this->hasCast($key)
+            && ! $this->isEnumCastable($key)
+            && ! $this->isClassCastable($key)) {
             return $this->castAttribute($key, $attribute) === $this->castAttribute($key, $original)
                 || $this->castDbAttribute($key, $attribute) === $this->castDbAttribute($key, $original)
                 || $this->castJsonAttribute($key, $attribute) === $this->castJsonAttribute($key, $original);
@@ -150,7 +152,9 @@ trait HasAttributesCast
     protected function addCastAttributesToArray(array $attributes, array $mutatedAttributes) : array
     {
         foreach ($this->getCasts() as $key => $value) {
-            if (! array_key_exists($key, $attributes) || in_array($key, $mutatedAttributes)) {
+            if (! array_key_exists($key, $attributes)
+                || in_array($key, $mutatedAttributes)
+                || $this->isEnumCastable($key)) {
                 continue;
             }
 
@@ -202,6 +206,7 @@ trait HasAttributesCast
 
         if (array_key_exists($key, $this->getAttributes()) ||
             $this->hasGetMutator($key) ||
+            $this->isEnumCastable($key) ||
             $this->isClassCastable($key)) {
             return $this->getAttributeValue($key);
         }
@@ -235,6 +240,11 @@ trait HasAttributesCast
             return $this->mutateAttribute($key, $value);
         }
 
+        if ($this->isEnumCastable($key)
+            && method_exists($this, 'getEnumCastableAttributeValue')) {
+            return $this->getEnumCastableAttributeValue($key, $value);
+        }
+
         if ($this->isClassCastable($key)) {
             return $this->getClassCastableAttributeValue($key, $value);
         }
@@ -262,6 +272,10 @@ trait HasAttributesCast
     {
         if ($this->hasSetMutator($key)) {
             return $this->setMutatedAttributeValue($key, $value);
+        } elseif ($this->isEnumCastable($key)
+            && method_exists($this, 'setEnumCastableAttribute')) {
+            $this->setEnumCastableAttribute($key, $value);
+            return $this;
         } elseif ($this->isClassCastable($key)) {
             $this->setClassCastableAttribute($key, $value);
             return $this;
@@ -297,6 +311,31 @@ trait HasAttributesCast
         }
 
         if (class_exists($castType)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if the given key is cast using an enum.
+     *
+     * @param string $key
+     * @return bool
+     */
+    protected function isEnumCastable($key)
+    {
+        if (! array_key_exists($key, $this->getCasts())) {
+            return false;
+        }
+
+        $castType = $this->getCasts()[$key];
+
+        if (in_array($castType, static::$primitiveCastTypes)) {
+            return false;
+        }
+
+        if (function_exists('enum_exists') && enum_exists($castType)) {
             return true;
         }
 

@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.4...2.x)
+## [Unreleased](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.5...2.x)
+
+## [v2.0.5 (2022-04-19)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.4...v2.0.5)
+
+### Added
+- Laravel 9 support
 
 ## [v2.0.4 (2021-09-01)](https://github.com/jn-jairo/laravel-eloquent-cast/compare/v2.0.3...v2.0.4)
 
