@@ -1,4 +1,3 @@
-[![Build Status](https://circleci.com/gh/jn-jairo/laravel-eloquent-cast.svg?style=shield)](https://circleci.com/gh/jn-jairo/laravel-eloquent-cast)
 [![Total Downloads](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/downloads)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
 [![Latest Stable Version](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/v/stable)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
 [![License](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/license)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
