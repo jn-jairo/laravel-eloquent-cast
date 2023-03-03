@@ -5,6 +5,9 @@ namespace JnJairo\Laravel\EloquentCast\Tests\Fixtures;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Support\Str;
 
+/**
+ * @implements \Illuminate\Contracts\Database\Eloquent\CastsAttributes<mixed, mixed>
+ */
 class DummyCast implements CastsAttributes
 {
     /**
@@ -13,11 +16,15 @@ class DummyCast implements CastsAttributes
      * @param \Illuminate\Database\Eloquent\Model $model
      * @param string $key
      * @param mixed $value
-     * @param array $attributes
+     * @param array<array-key, mixed> $attributes
      * @return mixed
      */
-    public function get($model, string $key, $value, array $attributes)
+    public function get($model, string $key, mixed $value, array $attributes): mixed
     {
+        if (is_null($value) || ! is_string($value)) {
+            return $value;
+        }
+
         return Str::studly($value);
     }
 
@@ -27,11 +34,15 @@ class DummyCast implements CastsAttributes
      * @param \Illuminate\Database\Eloquent\Model $model
      * @param string $key
      * @param mixed $value
-     * @param array $attributes
-     * @return array
+     * @param array<array-key, mixed> $attributes
+     * @return mixed
      */
-    public function set($model, string $key, $value, array $attributes)
+    public function set($model, string $key, mixed $value, array $attributes): mixed
     {
+        if (is_null($value) || ! is_string($value)) {
+            return $value;
+        }
+
         return Str::snake($value);
     }
 
@@ -41,11 +52,15 @@ class DummyCast implements CastsAttributes
      * @param \Illuminate\Database\Eloquent\Model $model
      * @param string $key
      * @param mixed $value
-     * @param array $attributes
+     * @param array<array-key, mixed> $attributes
      * @return mixed
      */
-    public function serialize($model, string $key, $value, array $attributes)
+    public function serialize($model, string $key, mixed $value, array $attributes): mixed
     {
+        if (is_null($value) || ! is_string($value)) {
+            return $value;
+        }
+
         return Str::slug($value);
     }
 }

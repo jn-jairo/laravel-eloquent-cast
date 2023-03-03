@@ -4,9 +4,7 @@ namespace JnJairo\Laravel\EloquentCast\Tests\Fixtures;
 
 use Illuminate\Database\Eloquent\Model;
 use JnJairo\Laravel\EloquentCast\HasAttributesCast;
-use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyArrayableEnum;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyIntegerEnum;
-use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyJsonableEnum;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyStringEnum;
 
 class DummyModel extends Model
@@ -15,56 +13,44 @@ class DummyModel extends Model
 
     protected $table = 'dummy';
 
-    protected $primaryKey = 'uuid';
+    protected $primaryKey = 'cast';
 
-    protected $keyType = 'uuid';
+    protected $keyType = 'dummy';
 
     public $incrementing = false;
 
-    public $timestamps = false;
-
     protected $guarded = [];
 
+    /**
+     * @var array<array-key, mixed>
+     */
     protected $casts = [
-        'uuid' => 'uuid',
-        'boolean' => 'bool',
-        'integer' => 'int',
-        'float' => 'float',
-        'decimal' => 'decimal:2',
-        'date' => 'date',
-        'datetime' => 'datetime',
-        'datetime_custom' => 'datetime:Y-m-d H:i:s.uO',
-        'timestamp' => 'timestamp',
-        'json' => 'json',
+        'cast' => 'dummy',
+        'cast_format' => 'dummy:case',
         'array' => 'array',
-        'object' => 'object',
-        'collection' => 'collection',
-        'text' => 'text',
-        'enum_string' => 'enum:' . DummyStringEnum::class,
-        'enum_integer' => 'enum:' . DummyIntegerEnum::class,
-        'enum_arrayable' => 'enum:' . DummyArrayableEnum::class,
-        'enum_jsonable' => 'enum:' . DummyJsonableEnum::class,
         'enum_string_laravel' => DummyStringEnum::class,
         'enum_integer_laravel' => DummyIntegerEnum::class,
         'class_cast' => DummyCast::class,
-        'encrypted' => 'encrypted',
     ];
 
+    /**
+     * @var array<array-key, mixed>
+     */
     protected $dates = [
         'seen_at',
     ];
 
-    public function getFooAttribute($value) : string
+    public function getFooAttribute(?string $value): ?string
     {
         return $value;
     }
 
-    public function setFooAttribute($value) : void
+    public function setFooAttribute(?string $value): void
     {
         $this->attributes['foo'] = $value;
     }
 
-    public function bar() : string
+    public function bar(): string
     {
         return 'bar';
     }

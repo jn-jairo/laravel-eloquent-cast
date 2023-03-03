@@ -1,4 +1,3 @@
-[![Build Status](https://circleci.com/gh/jn-jairo/laravel-eloquent-cast.svg?style=shield)](https://circleci.com/gh/jn-jairo/laravel-eloquent-cast)
 [![Total Downloads](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/downloads)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
 [![Latest Stable Version](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/v/stable)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
 [![License](https://poser.pugx.org/jn-jairo/laravel-eloquent-cast/license)](https://packagist.org/packages/jn-jairo/laravel-eloquent-cast)
@@ -12,11 +11,12 @@ with the [jn-jairo/laravel-cast](https://github.com/jn-jairo/laravel-cast) packa
 
  Laravel  | Eloquent Cast
 :---------|:----------
- 5.8.x    | 1.x
- 6.x      | 1.x
- 7.x      | 2.x
- 8.x      | 2.x
- 9.x      | 2.x
+  5.8.x   | 1.x
+  6.x     | 1.x
+  7.x     | 2.x
+  8.x     | 3.x
+  9.x     | 3.x
+ 10.x     | 3.x
 
 ## Installation
 

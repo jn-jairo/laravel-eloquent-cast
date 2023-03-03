@@ -4,12 +4,14 @@ namespace JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums;
 
 use Illuminate\Contracts\Support\Jsonable;
 
+use function Safe\json_encode;
+
 enum DummyJsonableEnum : int implements Jsonable
 {
     case foo = 1;
     case bar = 2;
 
-    public function description() : string
+    public function description(): string
     {
         return match ($this) {
             self::foo => 'foo description',

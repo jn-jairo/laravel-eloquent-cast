@@ -11,7 +11,7 @@ class EloquentCastServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot() : void
+    public function boot(): void
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
@@ -25,7 +25,7 @@ class EloquentCastServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function register() : void
+    public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/eloquent-cast.php', 'eloquent-cast');
     }

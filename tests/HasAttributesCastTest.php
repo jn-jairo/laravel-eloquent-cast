@@ -1,726 +1,432 @@
 <?php
 
-namespace JnJairo\Laravel\EloquentCast\Tests;
+/**
+ * @var \JnJairo\Laravel\EloquentCast\Tests\TestCase $this
+ */
 
-use Illuminate\Database\Eloquent\Concerns\HasAttributes;
-use Illuminate\Encryption\Encrypter;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Crypt;
 use JnJairo\Laravel\Cast\Facades\Cast;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\DummyModel;
-use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyArrayableEnum;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyIntegerEnum;
-use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyJsonableEnum;
 use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Enums\DummyStringEnum;
-use JnJairo\Laravel\EloquentCast\Tests\OrchestraTestCase as TestCase;
-use Ramsey\Uuid\UuidInterface;
+use JnJairo\Laravel\EloquentCast\Tests\Fixtures\Types\DummyType;
 
-/**
- * @testdox Has attributes cast
- */
-class HasAttributesCastTest extends TestCase
-{
-    /**
-     * Define environment setup.
-     *
-     * @param \Illuminate\Foundation\Application $app
-     * @return void
-     */
-    protected function getEnvironmentSetUp($app)
-    {
-        // Setup default database to use sqlite :memory:
-        $app['config']->set('database.default', 'testbench');
-        $app['config']->set('database.connections.testbench', [
+beforeEach(function () {
+    config([
+        'database.default' => 'testbench',
+        'database.connections.testbench' => [
             'driver'   => 'sqlite',
             'database' => ':memory:',
             'prefix'   => '',
+        ],
+        'eloquent-cast.mode' => 'auto',
+        'eloquent-cast.suffix' => '_',
+        'eloquent-cast.suffix_only' => [],
+        'cast.types.dummy' => DummyType::class,
+    ]);
+
+    $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+});
+
+$datetime = Carbon::createFromFormat('Y-m-d H:i:s', '1969-07-20 22:56:00', 'UTC');
+
+$removeCast = function (array $array) {
+    return array_filter($array, function (array $value, string $key) {
+        return ! in_array($key, [
+            'class_cast',
+            'enum_string_laravel',
+            'enum_integer_laravel',
         ]);
+    }, ARRAY_FILTER_USE_BOTH);
+};
 
-        // Setup encrypter
-        $app['config']->set('app.key', 'base64:' . base64_encode(
-            Encrypter::generateKey('AES-256-CBC')
-        ));
-        $app['config']->set('app.cipher', 'AES-256-CBC');
+$removeDeprecated = function (array $array) {
+    $deprecated = [];
+
+    if (version_compare(Application::VERSION, '10.0.0', '>=')) {
+        $deprecated[] = 'mutated_date';
     }
 
-    public function setUp() : void
-    {
-        parent::setUp();
+    if (empty($deprecated)) {
+        return $array;
+    }
 
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+    return array_filter($array, function (array $value, string $key) use ($deprecated) {
+        return ! in_array($key, $deprecated);
+    }, ARRAY_FILTER_USE_BOTH);
+};
 
-        config([
-            'eloquent-cast.mode' => 'auto',
-            'eloquent-cast.suffix' => '_',
-            'eloquent-cast.suffix_only' => [],
+$dataset = [
+    'cast' => ['cast', 'FooBar'],
+    'cast_format' => ['cast_format', 'FOO'],
+    'no_cast' => ['no_cast', 1],
+    'class_cast' => ['class_cast', 'FooBar'],
+    'mutated' => ['foo', 'Foo'],
+    'mutated_date' => ['seen_at', $datetime],
+    'timestamp' => ['created_at', $datetime],
+    'enum_string_laravel' => ['enum_string_laravel', DummyStringEnum::foo],
+    'enum_integer_laravel' => ['enum_integer_laravel', DummyIntegerEnum::one],
+];
+
+$dataset = $removeDeprecated($dataset);
+
+$datasetCast = $removeCast($dataset);
+
+$datasetDb = [
+    'cast' => ['cast', 'FooBar', 'foo_bar'],
+    'cast_format' => ['cast_format', 'FOO', 'foo'],
+    'no_cast' => ['no_cast', 1, 1],
+    'class_cast' => ['class_cast', 'FooBar', 'foo_bar'],
+    'mutated' => ['foo', 'Foo', 'Foo'],
+    'mutated_date' => ['seen_at', $datetime, '1969-07-20 22:56:00'],
+    'timestamp' => ['created_at', $datetime, '1969-07-20 22:56:00'],
+    'enum_string_laravel' => ['enum_string_laravel', DummyStringEnum::foo, 'foo'],
+    'enum_integer_laravel' => ['enum_integer_laravel', DummyIntegerEnum::one, 1],
+];
+
+$datasetDb = $removeDeprecated($datasetDb);
+
+$datasetCastDb = $removeCast($datasetDb);
+
+$datasetJson = [
+    'cast' => ['cast', 'FooBar', 'FooBar'],
+    'cast_format' => ['cast_format', 'FOO', 'FOO'],
+    'no_cast' => ['no_cast', 1, 1],
+    'class_cast' => ['class_cast', 'FooBar', 'foo-bar'],
+    'mutated' => ['foo', 'Foo', 'Foo'],
+    'mutated_date' => ['seen_at', $datetime, '1969-07-20T22:56:00.000000Z'],
+    'timestamp' => ['created_at', $datetime, '1969-07-20T22:56:00.000000Z'],
+    'enum_string_laravel' => ['enum_string_laravel', DummyStringEnum::foo, 'foo'],
+    'enum_integer_laravel' => ['enum_integer_laravel', DummyIntegerEnum::one, 1],
+];
+
+$datasetJson = $removeDeprecated($datasetJson);
+
+$datasetEquivalentValue = [
+    'cast' => ['cast', 'FooBar', 'foo_bar'],
+    'cast_format' => ['cast_format', 'FOO', 'foo'],
+    'no_cast' => ['no_cast', 1, '1'],
+    'class_cast' => ['class_cast', 'FooBar', 'foo_bar'],
+    'mutated' => ['foo', 'Foo', 'Foo'],
+    'mutated_date' => ['seen_at', $datetime, '1969-07-20 22:56:00'],
+    'timestamp' => ['created_at', $datetime, '1969-07-20 22:56:00'],
+    'enum_string_laravel' => ['enum_string_laravel', DummyStringEnum::foo, 'foo'],
+    'enum_integer_laravel' => ['enum_integer_laravel', DummyIntegerEnum::one, 1],
+];
+
+$datasetEquivalentValue = $removeDeprecated($datasetEquivalentValue);
+
+$datasetDifferentValue = [
+    'cast' => ['cast', 'FooBar', 'bar_foo'],
+    'cast_format' => ['cast_format', 'FOO', 'bar'],
+    'no_cast' => ['no_cast', 1, '2'],
+    'class_cast' => ['class_cast', 'FooBar', 'bar_foo'],
+    'mutated' => ['foo', 'Foo', 'Bar'],
+    'mutated_date' => ['seen_at', $datetime, '1969-07-21 22:56:01'],
+    'timestamp' => ['created_at', $datetime, '1969-07-21 22:56:01'],
+    'enum_string_laravel' => ['enum_string_laravel', DummyStringEnum::foo, 'bar'],
+    'enum_integer_laravel' => ['enum_integer_laravel', DummyIntegerEnum::one, 2],
+];
+
+$datasetDifferentValue = $removeDeprecated($datasetDifferentValue);
+
+it('is not dirty when set an equivalent value', function (
+    string $attribute,
+    mixed $value,
+    mixed $newValue,
+) {
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    expect($model->isDirty($attribute))
+        ->toBeFalse();
+    expect($model->isDirty())
+        ->toBeFalse();
+
+    $model->$attribute = $newValue;
+
+    expect($model->isDirty($attribute))
+        ->toBeFalse();
+    expect($model->isDirty())
+        ->toBeFalse();
+})->with($datasetEquivalentValue);
+
+it('is dirty when set a different value', function (
+    string $attribute,
+    mixed $value,
+    mixed $newValue,
+) {
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    expect($model->isDirty($attribute))
+        ->toBeFalse();
+    expect($model->isDirty())
+        ->toBeFalse();
+
+    $model->$attribute = $newValue;
+
+    expect($model->isDirty($attribute))
+        ->toBeTrue();
+    expect($model->isDirty())
+        ->toBeTrue();
+})->with($datasetDifferentValue);
+
+it('is dirty when set a new attribute', function (
+    string $attribute,
+    mixed $value,
+) {
+    $model = new DummyModel();
+    $model->syncOriginal();
+
+    expect($model->isDirty($attribute))
+        ->toBeFalse();
+    expect($model->isDirty())
+        ->toBeFalse();
+
+    $model->$attribute = $value;
+
+    expect($model->isDirty($attribute))
+        ->toBeTrue();
+    expect($model->isDirty())
+        ->toBeTrue();
+})->with($dataset);
+
+it('is dirty when set null', function (
+    string $attribute,
+    mixed $value,
+) {
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    expect($model->isDirty($attribute))
+        ->toBeFalse();
+    expect($model->isDirty())
+        ->toBeFalse();
+
+    $model->$attribute = null;
+
+    expect($model->isDirty($attribute))
+        ->toBeTrue();
+    expect($model->isDirty())
+        ->toBeTrue();
+})->with($dataset);
+
+it('can get the attribute', function (
+    string $attribute,
+    mixed $value,
+) {
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    if (is_object($value)) {
+        expect($model->$attribute)
+            ->toEqual($value);
+    } else {
+        expect($model->$attribute)
+            ->toBe($value);
+    }
+})->with($dataset);
+
+it('can get the attribute using the suffix', function (
+    string $attribute,
+    mixed $value,
+) {
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    $attributeSuffix = $attribute . '_';
+
+    expect($model->$attributeSuffix)
+        ->toBe($value);
+})->with($datasetCast);
+
+it('can get the attributes as array', function (
+    string $attribute,
+    mixed $value,
+    mixed $arrayValue,
+) {
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    $array = $model->toArray();
+
+    expect($array)
+        ->toHaveKey($attribute);
+
+    if (is_object($value) || is_object($arrayValue)) {
+        expect($array[$attribute])
+            ->toEqual($arrayValue);
+    } else {
+        expect($array[$attribute])
+            ->toBe($arrayValue);
+    }
+})->with($datasetJson);
+
+it('can get the attribute with configuration mode getter', function (
+    string $attribute,
+    mixed $value,
+) {
+    config(['eloquent-cast.mode' => 'getter']);
+
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    if (is_object($value)) {
+        expect($model->$attribute)
+            ->toEqual($value);
+    } else {
+        expect($model->$attribute)
+            ->toBe($value);
+    }
+})->with($dataset);
+
+it('can get the attribute using the suffix with configuration mode suffix', function (
+    string $attribute,
+    mixed $value,
+) {
+    config(['eloquent-cast.mode' => 'suffix']);
+
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    $attributeSuffix = $attribute . '_';
+
+    expect($model->$attributeSuffix)
+        ->toBe($value);
+})->with($datasetCast);
+
+it('can get the attribute with configuration suffix only', function (
+    string $attribute,
+    mixed $value,
+    mixed $dbValue,
+) {
+    /**
+     * @var array<string, mixed> $types
+     */
+    $types = config('cast.types');
+
+    config([
+        'eloquent-cast.suffix_only' => array_keys($types),
+    ]);
+
+    $model = new DummyModel([
+        $attribute => $value,
+    ]);
+    $model->syncOriginal();
+
+    $attributeSuffix = $attribute . '_';
+
+    if (is_object($value) || is_object($dbValue)) {
+        expect($model->$attribute)
+            ->toEqual($dbValue);
+        expect($model->$attributeSuffix)
+            ->toEqual($value);
+    } else {
+        expect($model->$attribute)
+            ->toBe($dbValue);
+        expect($model->$attributeSuffix)
+            ->toBe($value);
+    }
+})->with($datasetCastDb);
+
+it('returns null for invalid attributes', function () {
+    $model = new DummyModel();
+
+    expect($model->getAttribute(''))
+        ->toBeNull();
+    expect($model->getAttribute('bar'))
+        ->toBeNull();
+    expect($model->bar)
+        ->toBeNull();
+    expect($model->asdf)
+        ->toBeNull();
+});
+
+it('can set json', function () {
+    $model = new DummyModel([
+        'array' => [
+            'foo' => 'bar',
+        ],
+    ]);
+    $model->syncOriginal();
+
+    $model->setAttribute('array->foo', 'baz');
+
+    expect($model->array)
+        ->toBe([
+            'foo' => 'baz',
         ]);
-    }
-
-    public function getValues() : array
-    {
-        $php = [
-            'uuid' => Cast::cast('', 'uuid'),
-            'boolean' => Cast::cast(true, 'boolean'),
-            'integer' => Cast::cast(123, 'integer'),
-            'float' => Cast::cast(123.45, 'float'),
-            'decimal' => Cast::cast(123.45, 'decimal', '2'),
-            'date' => Cast::cast('1969-07-20', 'date'),
-            'datetime' => Cast::cast('1969-07-20 22:56:00', 'datetime'),
-            'datetime_custom' => Cast::cast('1969-07-20 22:56:00.571140+0000', 'datetime', 'Y-m-d H:i:s.uO'),
-            'timestamp' => Cast::cast('1969-07-20 22:56:00', 'timestamp'),
-            'json' => Cast::cast(['foo' => 'bar'], 'json'),
-            'array' => Cast::cast(['foo' => 'bar'], 'array'),
-            'object' => Cast::cast(['foo' => 'bar'], 'object'),
-            'collection' => Cast::cast(['foo' => 'bar'], 'collection'),
-            'text' => Cast::cast(123, 'text'),
-            'class_cast' => 'FooBar',
-            'encrypted' => 'FooBar',
-            'no_cast' => '1',
-        ];
-
-        $db = [
-            'uuid' => Cast::castDb($php['uuid'], 'uuid'),
-            'boolean' => Cast::castDb($php['boolean'], 'boolean'),
-            'integer' => Cast::castDb($php['integer'], 'integer'),
-            'float' => Cast::castDb($php['float'], 'float'),
-            'decimal' => Cast::castDb($php['decimal'], 'decimal', '2'),
-            'date' => Cast::castDb($php['date'], 'date'),
-            'datetime' => Cast::castDb($php['datetime'], 'datetime'),
-            'datetime_custom' => Cast::castDb($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
-            'timestamp' => Cast::castDb($php['timestamp'], 'timestamp'),
-            'json' => Cast::castDb($php['json'], 'json'),
-            'array' => Cast::castDb($php['array'], 'array'),
-            'object' => Cast::castDb($php['object'], 'object'),
-            'collection' => Cast::castDb($php['collection'], 'collection'),
-            'text' => Cast::castDb($php['text'], 'text'),
-            'class_cast' => 'foo_bar',
-            'encrypted' => Crypt::encrypt('FooBar', false),
-            'no_cast' => $php['no_cast'],
-        ];
-
-        $json = [
-            'uuid' => Cast::castJson($php['uuid'], 'uuid'),
-            'boolean' => Cast::castJson($php['boolean'], 'boolean'),
-            'integer' => Cast::castJson($php['integer'], 'integer'),
-            'float' => Cast::castJson($php['float'], 'float'),
-            'decimal' => Cast::castJson($php['decimal'], 'decimal', '2'),
-            'date' => Cast::castJson($php['date'], 'date'),
-            'datetime' => Cast::castJson($php['datetime'], 'datetime'),
-            'datetime_custom' => Cast::castJson($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
-            'timestamp' => Cast::castJson($php['timestamp'], 'timestamp'),
-            'json' => Cast::castJson($php['json'], 'json'),
-            'array' => Cast::castJson($php['array'], 'array'),
-            'object' => Cast::castJson($php['object'], 'object'),
-            'collection' => Cast::castJson($php['collection'], 'collection'),
-            'text' => Cast::castJson($php['text'], 'text'),
-            'class_cast' => 'foo-bar',
-            'encrypted' => 'FooBar',
-            'no_cast' => $php['no_cast'],
-        ];
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $php['enum_string_laravel'] = $php['enum_string'] = DummyStringEnum::foo;
-            $php['enum_integer_laravel'] = $php['enum_integer'] = DummyIntegerEnum::one;
-            $php['enum_arrayable'] = DummyArrayableEnum::foo;
-            $php['enum_jsonable'] = DummyJsonableEnum::foo;
-
-            $db['enum_string_laravel'] = $db['enum_string'] = 'foo';
-            $db['enum_integer_laravel'] = $db['enum_integer'] = 1;
-            $db['enum_arrayable'] = 1;
-            $db['enum_jsonable'] = 1;
-
-            $json['enum_string_laravel'] = $json['enum_string'] = 'foo';
-            $json['enum_integer_laravel'] = $json['enum_integer'] = 1;
-            $json['enum_arrayable'] = [
-                'name' => 'foo',
-                'value' => 1,
-                'description' => 'foo description',
-            ];
-            $json['enum_jsonable'] = [
-                'name' => 'foo',
-                'value' => 1,
-                'description' => 'foo description',
-            ];
-        }
-
-        if (! method_exists(HasAttributes::class, 'serializeClassCastableAttribute')) {
-            $json['class_cast'] = 'foo_bar';
-        }
-
-        return [
-            'php' => $php,
-            'db' => $db,
-            'json' => $json,
-        ];
-    }
-
-    public function getNewValues() : array
-    {
-        $php = [
-            'uuid' => Cast::cast('', 'uuid'),
-            'boolean' => Cast::cast(false, 'boolean'),
-            'integer' => Cast::cast(1234, 'integer'),
-            'float' => Cast::cast(1234.56, 'float'),
-            'decimal' => Cast::cast(1234.56, 'decimal', '2'),
-            'date' => Cast::cast('1969-07-21', 'date'),
-            'datetime' => Cast::cast('1969-07-21 22:56:01', 'datetime'),
-            'datetime_custom' => Cast::cast('1969-07-20 22:56:01.571141+0000', 'datetime', 'Y-m-d H:i:s.uO'),
-            'timestamp' => Cast::cast('1969-07-21 22:56:01', 'timestamp'),
-            'json' => Cast::cast(['foo' => 'baz'], 'json'),
-            'array' => Cast::cast(['foo' => 'baz'], 'array'),
-            'object' => Cast::cast(['foo' => 'baz'], 'object'),
-            'collection' => Cast::cast(['foo' => 'baz'], 'collection'),
-            'text' => Cast::cast(1234, 'text'),
-            'class_cast' => 'BarFoo',
-            'encrypted' => 'BarFoo',
-            'no_cast' => '2',
-            'not_exists' => 'foo',
-            'foo' => 'foo',
-        ];
-
-        $db = [
-            'uuid' => Cast::castDb($php['uuid'], 'uuid'),
-            'boolean' => Cast::castDb($php['boolean'], 'boolean'),
-            'integer' => Cast::castDb($php['integer'], 'integer'),
-            'float' => Cast::castDb($php['float'], 'float'),
-            'decimal' => Cast::castDb($php['decimal'], 'decimal', '2'),
-            'date' => Cast::castDb($php['date'], 'date'),
-            'datetime' => Cast::castDb($php['datetime'], 'datetime'),
-            'datetime_custom' => Cast::castDb($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
-            'timestamp' => Cast::castDb($php['timestamp'], 'timestamp'),
-            'json' => Cast::castDb($php['json'], 'json'),
-            'array' => Cast::castDb($php['array'], 'array'),
-            'object' => Cast::castDb($php['object'], 'object'),
-            'collection' => Cast::castDb($php['collection'], 'collection'),
-            'text' => Cast::castDb($php['text'], 'text'),
-            'class_cast' => 'bar_foo',
-            'encrypted' => Crypt::encrypt('BarFoo', false),
-            'no_cast' => $php['no_cast'],
-            'not_exists' => $php['not_exists'],
-            'foo' => $php['foo'],
-        ];
-
-        $json = [
-            'uuid' => Cast::castJson($php['uuid'], 'uuid'),
-            'boolean' => Cast::castJson($php['boolean'], 'boolean'),
-            'integer' => Cast::castJson($php['integer'], 'integer'),
-            'float' => Cast::castJson($php['float'], 'float'),
-            'decimal' => Cast::castJson($php['decimal'], 'decimal', '2'),
-            'date' => Cast::castJson($php['date'], 'date'),
-            'datetime' => Cast::castJson($php['datetime'], 'datetime'),
-            'datetime_custom' => Cast::castJson($php['datetime_custom'], 'datetime', 'Y-m-d H:i:s.uO'),
-            'timestamp' => Cast::castJson($php['timestamp'], 'timestamp'),
-            'json' => Cast::castJson($php['json'], 'json'),
-            'array' => Cast::castJson($php['array'], 'array'),
-            'object' => Cast::castJson($php['object'], 'object'),
-            'collection' => Cast::castJson($php['collection'], 'collection'),
-            'text' => Cast::castJson($php['text'], 'text'),
-            'class_cast' => 'bar-foo',
-            'encrypted' => 'BarFoo',
-            'no_cast' => $php['no_cast'],
-            'not_exists' => $php['not_exists'],
-            'foo' => $php['foo'],
-        ];
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $php['enum_string_laravel'] = $php['enum_string'] = DummyStringEnum::bar;
-            $php['enum_integer_laravel'] = $php['enum_integer'] = DummyIntegerEnum::two;
-            $php['enum_arrayable'] = DummyArrayableEnum::bar;
-            $php['enum_jsonable'] = DummyJsonableEnum::bar;
-
-            $db['enum_string_laravel'] = $db['enum_string'] = 'bar';
-            $db['enum_integer_laravel'] = $db['enum_integer'] = 2;
-            $db['enum_arrayable'] = 2;
-            $db['enum_jsonable'] = 2;
-
-            $json['enum_string_laravel'] = $json['enum_string'] = 'bar';
-            $json['enum_integer_laravel'] = $json['enum_integer'] = 2;
-            $json['enum_arrayable'] = [
-                'name' => 'bar',
-                'value' => 2,
-                'description' => 'bar description',
-            ];
-            $json['enum_jsonable'] = [
-                'name' => 'bar',
-                'value' => 2,
-                'description' => 'bar description',
-            ];
-        }
-
-        if (! method_exists(HasAttributes::class, 'serializeClassCastableAttribute')) {
-            $json['class_cast'] = 'bar_foo';
-        }
-
-        return [
-            'php' => $php,
-            'db' => $db,
-            'json' => $json,
-        ];
-    }
-
-    public function test_dirty() : void
-    {
-        $values = $this->getValues();
-        $newValues = $this->getNewValues();
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        foreach ($values['php'] as $key => $value) {
-            $model->$key = $value;
-        }
-
-        $this->assertFalse($model->isDirty(), 'Same value');
-
-        foreach ($values['php'] as $key => $value) {
-            $this->assertFalse($model->isDirty($key), 'Same value ' . $key);
-        }
-
-        foreach ($newValues['php'] as $key => $value) {
-            $model->$key = $value;
-        }
-
-        $this->assertTrue($model->isDirty(), 'New value');
-
-        foreach ($newValues['php'] as $key => $value) {
-            $this->assertTrue($model->isDirty($key), 'New value ' . $key);
-        }
-
-        foreach ($newValues['php'] as $key => $value) {
-            $model->$key = null;
-        }
-
-        $this->assertTrue($model->isDirty(), 'Null value');
-
-        foreach ($newValues['php'] as $key => $value) {
-            $this->assertTrue($model->isDirty($key), 'Null value ' . $key);
-        }
-    }
-
-    public function test_get_attribute() : void
-    {
-        $values = $this->getValues();
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        $this->assertInstanceOf(UuidInterface::class, $model->uuid, 'uuid class');
-        $this->assertSame($values['php']['uuid']->toString(), $model->uuid->toString(), 'uuid');
-        $this->assertSame($values['php']['boolean'], $model->boolean, 'boolean');
-        $this->assertSame($values['php']['integer'], $model->integer, 'integer');
-        $this->assertSame($values['php']['float'], $model->float, 'float');
-        $this->assertEquals($values['php']['decimal'], $model->decimal, 'decimal');
-        $this->assertInstanceOf(Carbon::class, $model->date, 'date class');
-        $this->assertSame($values['php']['date']->toDateString(), $model->date->toDateString(), 'date');
-        $this->assertInstanceOf(Carbon::class, $model->datetime, 'datetime class');
-        $this->assertSame(
-            $values['php']['datetime']->toDateTimeString(),
-            $model->datetime->toDateTimeString(),
-            'datetime'
-        );
-        $this->assertInstanceOf(Carbon::class, $model->datetime_custom, 'datetime custom class');
-        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom), 'datetime custom');
-        $this->assertIsInt($model->timestamp, 'timestamp type');
-        $this->assertSame($values['php']['timestamp'], $model->timestamp, 'timestamp');
-        $this->assertSame($values['php']['json'], $model->json, 'json');
-        $this->assertSame($values['php']['array'], $model->array, 'array');
-        $this->assertEquals($values['php']['object'], $model->object, 'object');
-        $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
-        $this->assertSame($values['php']['text'], $model->text, 'text');
-        $this->assertSame($values['php']['class_cast'], $model->class_cast, 'class cast');
-        $this->assertSame($values['php']['encrypted'], $model->encrypted, 'encrypted');
-        $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['php']['enum_string'], $model->enum_string, 'enum string');
-            $this->assertSame($values['php']['enum_integer'], $model->enum_integer, 'enum integer');
-            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
-            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
-
-            $this->assertSame(
-                $values['php']['enum_string_laravel'],
-                $model->enum_string_laravel,
-                'enum string laravel'
-            );
-            $this->assertSame(
-                $values['php']['enum_integer_laravel'],
-                $model->enum_integer_laravel,
-                'enum integer laravel'
-            );
-        }
-    }
-
-    public function test_get_attribute_suffix() : void
-    {
-        $values = $this->getValues();
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
-        $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
-        $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
-        $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
-        $this->assertSame($values['php']['float'], $model->float_, 'float');
-        $this->assertEquals($values['php']['decimal'], $model->decimal_, 'decimal');
-        $this->assertInstanceOf(Carbon::class, $model->date_, 'date class');
-        $this->assertSame($values['php']['date']->toDateString(), $model->date_->toDateString(), 'date');
-        $this->assertInstanceOf(Carbon::class, $model->datetime_, 'datetime class');
-        $this->assertSame(
-            $values['php']['datetime']->toDateTimeString(),
-            $model->datetime_->toDateTimeString(),
-            'datetime'
-        );
-        $this->assertInstanceOf(Carbon::class, $model->datetime_custom_, 'datetime custom class');
-        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom_), 'datetime custom');
-        $this->assertIsInt($model->timestamp_, 'timestamp type');
-        $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
-        $this->assertSame($values['php']['json'], $model->json_, 'json');
-        $this->assertSame($values['php']['array'], $model->array_, 'array');
-        $this->assertEquals($values['php']['object'], $model->object_, 'object');
-        $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
-        $this->assertSame($values['php']['text'], $model->text_, 'text');
-        $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['php']['enum_string'], $model->enum_string_, 'enum string');
-            $this->assertSame($values['php']['enum_integer'], $model->enum_integer_, 'enum integer');
-            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable_, 'enum arrayable');
-            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable_, 'enum jsonable');
-        }
-    }
-
-    public function test_get_attribute_array() : void
-    {
-        $values = $this->getValues();
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        $array = $model->toArray();
-
-        $this->assertSame($values['json']['uuid'], $array['uuid'], 'uuid');
-        $this->assertSame($values['json']['boolean'], $array['boolean'], 'boolean');
-        $this->assertSame($values['json']['integer'], $array['integer'], 'integer');
-        $this->assertSame($values['json']['float'], $array['float'], 'float');
-        $this->assertSame($values['json']['decimal'], $array['decimal'], 'decimal');
-        $this->assertSame($values['json']['date'], $array['date'], 'date');
-        $this->assertSame($values['json']['datetime'], $array['datetime'], 'datetime');
-        $this->assertSame($values['json']['datetime_custom'], $array['datetime_custom'], 'datetime custom');
-        $this->assertSame($values['json']['timestamp'], $array['timestamp'], 'timestamp');
-        $this->assertSame($values['json']['json'], $array['json'], 'json');
-        $this->assertSame($values['json']['array'], $array['array'], 'array');
-        $this->assertSame($values['json']['object'], $array['object'], 'object');
-        $this->assertSame($values['json']['collection'], $array['collection'], 'collection');
-        $this->assertSame($values['json']['text'], $array['text'], 'text');
-        $this->assertSame($values['json']['class_cast'], $array['class_cast'], 'class cast');
-        $this->assertSame($values['json']['encrypted'], $array['encrypted'], 'encrypted');
-        $this->assertSame($values['json']['no_cast'], $array['no_cast'], 'no cast');
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['json']['enum_string'], $array['enum_string'], 'enum string');
-            $this->assertSame($values['json']['enum_integer'], $array['enum_integer'], 'enum integer');
-            $this->assertSame($values['json']['enum_arrayable'], $array['enum_arrayable'], 'enum arrayable');
-            $this->assertSame($values['json']['enum_jsonable'], $array['enum_jsonable'], 'enum jsonable');
-
-            $this->assertSame(
-                $values['json']['enum_string_laravel'],
-                $array['enum_string_laravel'],
-                'enum string laravel'
-            );
-            $this->assertSame(
-                $values['json']['enum_integer_laravel'],
-                $array['enum_integer_laravel'],
-                'enum integer laravel'
-            );
-        }
-    }
-
-    public function test_config_mode_getter() : void
-    {
-        config(['eloquent-cast.mode' => 'getter']);
-
-        $values = $this->getValues();
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        $this->assertInstanceOf(UuidInterface::class, $model->uuid, 'uuid class');
-        $this->assertSame($values['php']['uuid']->toString(), $model->uuid->toString(), 'uuid');
-        $this->assertSame($values['php']['boolean'], $model->boolean, 'boolean');
-        $this->assertSame($values['php']['integer'], $model->integer, 'integer');
-        $this->assertSame($values['php']['float'], $model->float, 'float');
-        $this->assertEquals($values['php']['decimal'], $model->decimal, 'decimal');
-        $this->assertInstanceOf(Carbon::class, $model->date, 'date class');
-        $this->assertSame($values['php']['date']->toDateString(), $model->date->toDateString(), 'date');
-        $this->assertInstanceOf(Carbon::class, $model->datetime, 'datetime class');
-        $this->assertSame(
-            $values['php']['datetime']->toDateTimeString(),
-            $model->datetime->toDateTimeString(),
-            'datetime'
-        );
-        $this->assertInstanceOf(Carbon::class, $model->datetime_custom, 'datetime custom class');
-        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom), 'datetime custom');
-        $this->assertIsInt($model->timestamp, 'timestamp type');
-        $this->assertSame($values['php']['timestamp'], $model->timestamp, 'timestamp');
-        $this->assertSame($values['php']['json'], $model->json, 'json');
-        $this->assertSame($values['php']['array'], $model->array, 'array');
-        $this->assertEquals($values['php']['object'], $model->object, 'object');
-        $this->assertEquals($values['php']['collection'], $model->collection, 'collection');
-        $this->assertSame($values['php']['text'], $model->text, 'text');
-        $this->assertSame($values['php']['class_cast'], $model->class_cast, 'class cast');
-        $this->assertSame($values['php']['encrypted'], $model->encrypted, 'encrypted');
-        $this->assertSame($values['php']['no_cast'], $model->no_cast, 'no cast');
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['php']['enum_string'], $model->enum_string, 'enum string');
-            $this->assertSame($values['php']['enum_integer'], $model->enum_integer, 'enum integer');
-            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
-            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
-
-            $this->assertSame(
-                $values['php']['enum_string_laravel'],
-                $model->enum_string_laravel,
-                'enum string laravel'
-            );
-            $this->assertSame(
-                $values['php']['enum_integer_laravel'],
-                $model->enum_integer_laravel,
-                'enum integer laravel'
-            );
-        }
-
-        $this->assertNull($model->uuid_, 'uuid');
-        $this->assertNull($model->boolean_, 'boolean');
-        $this->assertNull($model->integer_, 'integer');
-        $this->assertNull($model->float_, 'float');
-        $this->assertNull($model->decimal_, 'decimal');
-        $this->assertNull($model->date_, 'date');
-        $this->assertNull($model->datetime_, 'datetime');
-        $this->assertNull($model->datetime_custom_, 'datetime');
-        $this->assertNull($model->timestamp_, 'timestamp');
-        $this->assertNull($model->json_, 'json');
-        $this->assertNull($model->array_, 'array');
-        $this->assertNull($model->object_, 'object');
-        $this->assertNull($model->collection_, 'collection');
-        $this->assertNull($model->text_, 'text');
-        $this->assertNull($model->encrypted_, 'encrypted');
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertNull($model->enum_string_, 'enum string');
-            $this->assertNull($model->enum_integer_, 'enum integer');
-            $this->assertNull($model->enum_arrayable_, 'enum arrayable');
-            $this->assertNull($model->enum_jsonable_, 'enum jsonable');
-        }
-    }
-
-    public function test_config_mode_suffix() : void
-    {
-        config(['eloquent-cast.mode' => 'suffix']);
-
-        $values = $this->getValues();
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        $this->assertSame($values['db']['uuid'], $model->uuid, 'uuid');
-        $this->assertSame($values['db']['boolean'], $model->boolean, 'boolean');
-        $this->assertSame($values['db']['integer'], $model->integer, 'integer');
-        $this->assertSame($values['db']['float'], $model->float, 'float');
-        $this->assertSame($values['db']['decimal'], $model->decimal, 'decimal');
-        $this->assertSame($values['db']['date'], $model->date, 'date');
-        $this->assertSame($values['db']['datetime'], $model->datetime, 'datetime');
-        $this->assertSame($values['db']['datetime_custom'], $model->datetime_custom, 'datetime custom');
-        $this->assertSame($values['db']['timestamp'], $model->timestamp, 'timestamp');
-        $this->assertSame($values['db']['json'], $model->json, 'json');
-        $this->assertSame($values['db']['array'], $model->array, 'array');
-        $this->assertSame($values['db']['object'], $model->object, 'object');
-        $this->assertSame($values['db']['collection'], $model->collection, 'collection');
-        $this->assertSame($values['db']['text'], $model->text, 'text');
-        $this->assertSame(
-            Crypt::decrypt($values['db']['encrypted'], false),
-            Crypt::decrypt($model->encrypted, false),
-            'encrypted'
-        );
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['db']['enum_string'], $model->enum_string, 'enum string');
-            $this->assertSame($values['db']['enum_integer'], $model->enum_integer, 'enum integer');
-            $this->assertSame($values['db']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
-            $this->assertSame($values['db']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
-        }
-
-        $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
-        $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
-        $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
-        $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
-        $this->assertSame($values['php']['float'], $model->float_, 'float');
-        $this->assertEquals($values['php']['decimal'], $model->decimal_, 'decimal');
-        $this->assertInstanceOf(Carbon::class, $model->date_, 'date class');
-        $this->assertSame($values['php']['date']->toDateString(), $model->date_->toDateString(), 'date');
-        $this->assertInstanceOf(Carbon::class, $model->datetime_, 'datetime class');
-        $this->assertSame(
-            $values['php']['datetime']->toDateTimeString(),
-            $model->datetime_->toDateTimeString(),
-            'datetime'
-        );
-        $this->assertInstanceOf(Carbon::class, $model->datetime_custom_, 'datetime custom class');
-        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom_), 'datetime custom');
-        $this->assertIsInt($model->timestamp_, 'timestamp type');
-        $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
-        $this->assertSame($values['php']['json'], $model->json_, 'json');
-        $this->assertSame($values['php']['array'], $model->array_, 'array');
-        $this->assertEquals($values['php']['object'], $model->object_, 'object');
-        $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
-        $this->assertSame($values['php']['text'], $model->text_, 'text');
-        $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['php']['enum_string'], $model->enum_string_, 'enum string');
-            $this->assertSame($values['php']['enum_integer'], $model->enum_integer_, 'enum integer');
-            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable_, 'enum arrayable');
-            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable_, 'enum jsonable');
-        }
-    }
-
-    public function test_config_mode_suffix_only() : void
-    {
-        $values = $this->getValues();
-
-        config(['eloquent-cast.suffix_only' => array_keys($values['php'])]);
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        $this->assertSame($values['db']['uuid'], $model->uuid, 'uuid');
-        $this->assertSame($values['db']['boolean'], $model->boolean, 'boolean');
-        $this->assertSame($values['db']['integer'], $model->integer, 'integer');
-        $this->assertSame($values['db']['float'], $model->float, 'float');
-        $this->assertSame($values['db']['decimal'], $model->decimal, 'decimal');
-        $this->assertSame($values['db']['date'], $model->date, 'date');
-        $this->assertSame($values['db']['datetime'], $model->datetime, 'datetime');
-        $this->assertSame($values['db']['datetime_custom'], $model->datetime_custom, 'datetime custom');
-        $this->assertSame($values['db']['timestamp'], $model->timestamp, 'timestamp');
-        $this->assertSame($values['db']['json'], $model->json, 'json');
-        $this->assertSame($values['db']['array'], $model->array, 'array');
-        $this->assertSame($values['db']['object'], $model->object, 'object');
-        $this->assertSame($values['db']['collection'], $model->collection, 'collection');
-        $this->assertSame($values['db']['text'], $model->text, 'text');
-        $this->assertSame($values['db']['no_cast'], $model->no_cast, 'no cast');
-        $this->assertSame(
-            Crypt::decrypt($values['db']['encrypted'], false),
-            Crypt::decrypt($model->encrypted, false),
-            'encrypted'
-        );
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['php']['enum_string'], $model->enum_string, 'enum string');
-            $this->assertSame($values['php']['enum_integer'], $model->enum_integer, 'enum integer');
-            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable, 'enum arrayable');
-            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable, 'enum jsonable');
-        }
-
-        $this->assertInstanceOf(UuidInterface::class, $model->uuid_, 'uuid class');
-        $this->assertSame($values['php']['uuid']->toString(), $model->uuid_->toString(), 'uuid');
-        $this->assertSame($values['php']['boolean'], $model->boolean_, 'boolean');
-        $this->assertSame($values['php']['integer'], $model->integer_, 'integer');
-        $this->assertSame($values['php']['float'], $model->float_, 'float');
-        $this->assertEquals($values['php']['decimal'], $model->decimal_, 'decimal');
-        $this->assertInstanceOf(Carbon::class, $model->date_, 'date class');
-        $this->assertSame($values['php']['date']->toDateString(), $model->date_->toDateString(), 'date');
-        $this->assertInstanceOf(Carbon::class, $model->datetime_, 'datetime class');
-        $this->assertSame(
-            $values['php']['datetime']->toDateTimeString(),
-            $model->datetime_->toDateTimeString(),
-            'datetime'
-        );
-        $this->assertInstanceOf(Carbon::class, $model->datetime_custom_, 'datetime custom class');
-        $this->assertTrue($values['php']['datetime_custom']->equalTo($model->datetime_custom_), 'datetime custom');
-        $this->assertIsInt($model->timestamp_, 'timestamp type');
-        $this->assertSame($values['php']['timestamp'], $model->timestamp_, 'timestamp');
-        $this->assertSame($values['php']['json'], $model->json_, 'json');
-        $this->assertSame($values['php']['array'], $model->array_, 'array');
-        $this->assertEquals($values['php']['object'], $model->object_, 'object');
-        $this->assertEquals($values['php']['collection'], $model->collection_, 'collection');
-        $this->assertSame($values['php']['text'], $model->text_, 'text');
-        $this->assertSame($values['php']['encrypted'], $model->encrypted_, 'encrypted');
-
-        if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
-            $this->assertSame($values['php']['enum_string'], $model->enum_string_, 'enum string');
-            $this->assertSame($values['php']['enum_integer'], $model->enum_integer_, 'enum integer');
-            $this->assertSame($values['php']['enum_arrayable'], $model->enum_arrayable_, 'enum arrayable');
-            $this->assertSame($values['php']['enum_jsonable'], $model->enum_jsonable_, 'enum jsonable');
-        }
-    }
-
-    public function test_get_invalid_attribute() : void
-    {
-        $model = new DummyModel();
-
-        $this->assertNull($model->getAttribute(''), 'Empty attribute name');
-        $this->assertNull($model->bar, 'Method');
-    }
-
-    public function test_mutated_attribute() : void
-    {
-        $values = $this->getValues();
-        $newValues = $this->getNewValues();
-
-        $model = new DummyModel([
-            'foo' => 'foo',
-            'seen_at' => $values['db']['datetime'],
-        ]);
-        $model->syncOriginal();
-
-        $this->assertSame('foo', $model->foo, 'Get foo');
-        $this->assertInstanceOf(Carbon::class, $model->seen_at, 'Get datetime class');
-        $this->assertSame($values['db']['datetime'], $model->seen_at->toDateTimeString(), 'Get datetime');
-
-        $array = $model->toArray();
-
-        $this->assertSame('foo', $array['foo'], 'Get array foo');
-        $this->assertSame(Carbon::parse($values['db']['datetime'])->toJSON(), $array['seen_at'], 'Get array datetime');
-
-        $model->foo = 'bar';
-        $model->seen_at = $newValues['php']['datetime'];
-
-        $this->assertSame('bar', $model->foo, 'Set foo');
-        $this->assertInstanceOf(Carbon::class, $model->seen_at, 'Set datetime class');
-        $this->assertSame($newValues['db']['datetime'], $model->seen_at->toDateTimeString(), 'Set datetime');
-
-        $array = $model->toArray();
-
-        $this->assertSame('bar', $array['foo'], 'Set array foo');
-        $this->assertSame(
-            Carbon::parse($newValues['db']['datetime'])->toJSON(),
-            $array['seen_at'],
-            'Set array datetime'
-        );
-    }
-
-    public function test_set_json() : void
-    {
-        $values = $this->getValues();
-        $newValues = $this->getNewValues();
-
-        $model = new DummyModel($values['db']);
-        $model->syncOriginal();
-
-        $model->setAttribute('array->foo', $newValues['php']['array']['foo']);
-        $this->assertSame($newValues['php']['array'], $model->array, 'Array');
-    }
-
-    public function test_resolve_route_binding() : void
-    {
-        $values = $this->getValues();
-
-        $model = new DummyModel($values['db']);
-        $model->save();
-
-        $dummy = $model->resolveRouteBinding($values['php']['uuid']);
-
-        $this->assertInstanceOf(DummyModel::class, $dummy, 'Model class');
-        $this->assertInstanceOf(UuidInterface::class, $dummy->uuid, 'Key class');
-        $this->assertSame($model->uuid->toString(), $dummy->uuid->toString(), 'Same model');
-    }
-}
+});
+
+it('can resolve route binding', function () {
+    $model = new DummyModel([
+        'cast' => 'FooBar',
+    ]);
+    $model->save();
+
+    /**
+     * @var \Illuminate\Database\Eloquent\Model $dummy
+     */
+    $dummy = $model->resolveRouteBinding('FooBar');
+
+    expect($dummy)
+        ->toBeInstanceOf(DummyModel::class);
+    expect($dummy->cast)
+        ->toBe('FooBar');
+
+    /**
+     * @var \Illuminate\Database\Eloquent\Model $dummy
+     */
+    $dummy = $model->resolveRouteBinding('foo_bar');
+
+    expect($dummy)
+        ->toBeInstanceOf(DummyModel::class);
+    expect($dummy->cast)
+        ->toBe('FooBar');
+});
+
+it('passes the format', function () {
+    $attribute = 'dummy';
+    $type = 'dummy';
+    $format = '|foo|bar|foo:<>';
+    $value = 'foo';
+    $dbValue = 'bar';
+
+    Cast::shouldReceive('castDb')
+        ->once()
+        ->with($value, $type, $format)
+        ->andReturn($dbValue);
+
+    Cast::shouldReceive('cast')
+        ->once()
+        ->with($dbValue, $type, $format)
+        ->andReturn($value);
+
+    $model = new DummyModel();
+    $model->mergeCasts([
+        $attribute => $type . ':' . $format,
+    ]);
+
+    $model->$attribute = $value;
+
+    expect($model->$attribute)
+        ->toBe($value);
+});
