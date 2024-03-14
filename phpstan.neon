@@ -8,7 +8,7 @@ parameters:
         - '#Access to an undefined property Illuminate\\Database\\Eloquent\\Model::#'
         - '#Access to an undefined property JnJairo\\Laravel\\EloquentCast\\Tests\\Fixtures\\DummyModel::#'
         - '#Call to an undefined method JnJairo\\Laravel\\EloquentCast\\Tests\\Fixtures\\DummyModel::#'
-        - '#Call to an undefined method Pest\\Expectation\\|Pest\\Support\\Extendable::#'
         - '#Call to protected method .* of class Orchestra\\Testbench\\TestCase#'
         - '#If condition is always true#'
         - '#Variable \$deprecated in empty\(\) always exists and is not falsy#'
+        - '#Unable to resolve the template type TValue in call to function expect#'
